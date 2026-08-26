@@ -18,6 +18,9 @@ export type SportMatch = {
   status: string
   statusText: string
 
+  state: string
+  completed: boolean
+
   time: string
 
   competition: string
@@ -392,6 +395,18 @@ function convertEvent(
         event,
       ),
 
+    state:
+      getStatusType(
+        event,
+      ).state ?? '',
+
+    completed:
+      Boolean(
+        getStatusType(
+          event,
+        ).completed,
+      ),
+
     time,
 
     competition:
@@ -407,21 +422,20 @@ function convertEvent(
 }
 
 /* =========================================================
-   FETCH LEAGUE RANGE
+   ESPN FETCH HELPERS
 ========================================================= */
 
-async function fetchLeagueRange(
+async function fetchEspnScoreboard(
   league: FootballLeague,
-  from: string,
-  to: string,
+  url: string,
 ): Promise<SportMatch[]> {
-  const url =
-    `${ESPN_BASE}/${league.code}/scoreboard` +
-    `?limit=1000` +
-    `&dates=${from}-${to}`
-
   const response =
-    await fetch(url)
+    await fetch(
+      url,
+      {
+        cache: 'no-store',
+      },
+    )
 
   if (!response.ok) {
     throw new Error(
@@ -457,6 +471,189 @@ async function fetchLeagueRange(
     )
 }
 
+/*
+ * IMPORTANT:
+ *
+ * This endpoint intentionally has NO dates parameter.
+ * ESPN's current scoreboard is the freshest source for
+ * matches that are live right now.
+ */
+async function fetchLeagueCurrent(
+  league: FootballLeague,
+): Promise<SportMatch[]> {
+  const url =
+    `${ESPN_BASE}/${league.code}/scoreboard` +
+    `?limit=1000`
+
+  return fetchEspnScoreboard(
+    league,
+    url,
+  )
+}
+
+/*
+ * Used for recent results + upcoming fixtures.
+ */
+async function fetchLeagueRange(
+  league: FootballLeague,
+  from: string,
+  to: string,
+): Promise<SportMatch[]> {
+  const url =
+    `${ESPN_BASE}/${league.code}/scoreboard` +
+    `?limit=1000` +
+    `&dates=${from}-${to}`
+
+  return fetchEspnScoreboard(
+    league,
+    url,
+  )
+}
+
+/*
+ * Merge by ESPN event id.
+ *
+ * Window matches are inserted first.
+ * Current scoreboard matches are inserted second,
+ * so LIVE/current score + status information wins.
+ */
+function mergeMatches(
+  windowMatches: SportMatch[],
+  currentMatches: SportMatch[],
+): SportMatch[] {
+  const map =
+    new Map<
+      string,
+      SportMatch
+    >()
+
+  for (
+    const match of
+      windowMatches
+  ) {
+    map.set(
+      match.id,
+      match,
+    )
+  }
+
+  for (
+    const match of
+      currentMatches
+  ) {
+    const existing =
+      map.get(
+        match.id,
+      )
+
+    map.set(
+      match.id,
+      existing
+        ? {
+            ...existing,
+            ...match,
+
+            /*
+             * Prefer a real score from either source.
+             */
+            homeScore:
+              match.homeScore ??
+              existing.homeScore,
+
+            awayScore:
+              match.awayScore ??
+              existing.awayScore,
+          }
+        : match,
+    )
+  }
+
+  return Array.from(
+    map.values(),
+  )
+}
+
+/*
+ * Fetch both sources for one league.
+ *
+ * This is the core live-score fix:
+ *
+ *   current scoreboard (no dates)
+ *             +
+ *   recent/upcoming date window
+ *             ↓
+ *          merged feed
+ */
+async function fetchLeagueCurrentWindow(
+  league: FootballLeague,
+  from: string,
+  to: string,
+): Promise<SportMatch[]> {
+  const [
+    currentResult,
+    windowResult,
+  ] =
+    await Promise.allSettled([
+      fetchLeagueCurrent(
+        league,
+      ),
+
+      fetchLeagueRange(
+        league,
+        from,
+        to,
+      ),
+    ])
+
+  const currentMatches =
+    currentResult.status ===
+    'fulfilled'
+      ? currentResult.value
+      : []
+
+  const windowMatches =
+    windowResult.status ===
+    'fulfilled'
+      ? windowResult.value
+      : []
+
+  if (
+    currentResult.status ===
+    'rejected'
+  ) {
+    console.error(
+      `${league.name} current scoreboard failed:`,
+      currentResult.reason,
+    )
+  }
+
+  if (
+    windowResult.status ===
+    'rejected'
+  ) {
+    console.error(
+      `${league.name} date-window scoreboard failed:`,
+      windowResult.reason,
+    )
+  }
+
+  if (
+    currentMatches.length ===
+      0 &&
+    windowMatches.length ===
+      0
+  ) {
+    throw new Error(
+      `${league.name} returned no scoreboard data.`,
+    )
+  }
+
+  return mergeMatches(
+    windowMatches,
+    currentMatches,
+  )
+}
+
 /* =========================================================
    STATUS HELPERS
 ========================================================= */
@@ -464,10 +661,28 @@ async function fetchLeagueRange(
 export function isLiveMatch(
   match: SportMatch,
 ) {
+  const state =
+    match.state
+      .trim()
+      .toLowerCase()
+
+  /*
+   * ESPN's canonical live state.
+   */
+  if (
+    state === 'in' ||
+    state === 'live'
+  ) {
+    return true
+  }
+
   const status =
     `${match.status} ${match.statusText}`
       .toLowerCase()
 
+  /*
+   * Fallbacks for unusual ESPN competition states.
+   */
   return (
     status.includes('live') ||
     status.includes('in progress') ||
@@ -488,6 +703,18 @@ export function isLiveMatch(
 export function isFinishedMatch(
   match: SportMatch,
 ) {
+  const state =
+    match.state
+      .trim()
+      .toLowerCase()
+
+  if (
+    match.completed ||
+    state === 'post'
+  ) {
+    return true
+  }
+
   const status =
     `${match.status} ${match.statusText}`
       .toLowerCase()
@@ -497,6 +724,7 @@ export function isFinishedMatch(
     status.includes('finished') ||
     status.includes('full time') ||
     status.includes('fulltime') ||
+    status.includes('status_final') ||
     status.includes('post')
   )
 }
@@ -509,6 +737,20 @@ export function isUpcomingMatch(
     isFinishedMatch(match)
   ) {
     return false
+  }
+
+  const state =
+    match.state
+      .trim()
+      .toLowerCase()
+
+  /*
+   * ESPN's canonical pre-match state.
+   */
+  if (
+    state === 'pre'
+  ) {
+    return true
   }
 
   const time =
@@ -569,7 +811,7 @@ export async function getFootballMatches(): Promise<
     cachedCurrent &&
     Date.now() -
       cachedCurrentAt <
-      60_000
+      30_000
   ) {
     return cachedCurrent
   }
@@ -584,7 +826,7 @@ export async function getFootballMatches(): Promise<
     await Promise.allSettled(
       FOOTBALL_LEAGUES.map(
         (league) =>
-          fetchLeagueRange(
+          fetchLeagueCurrentWindow(
             league,
             from,
             to,
@@ -614,13 +856,29 @@ export async function getFootballMatches(): Promise<
       },
     )
 
+  /*
+   * Extra safety:
+   * dedupe globally by ESPN event id.
+   */
+  const unique =
+    Array.from(
+      new Map(
+        matches.map(
+          (match) => [
+            match.id,
+            match,
+          ],
+        ),
+      ).values(),
+    )
+
   cachedCurrent =
-    matches
+    unique
 
   cachedCurrentAt =
     Date.now()
 
-  return matches
+  return unique
 }
 
 /* =========================================================
@@ -651,7 +909,7 @@ export async function getLeagueMatches(
   } =
     getCurrentWindow()
 
-  return fetchLeagueRange(
+  return fetchLeagueCurrentWindow(
     league,
     from,
     to,
