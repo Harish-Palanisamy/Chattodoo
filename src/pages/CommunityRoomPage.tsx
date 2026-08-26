@@ -151,6 +151,30 @@ function CommunityRoomPage() {
 
     async function load() {
       try {
+        // "public" is the built-in official match room.
+        // It does not need a community-room document in Firebase.
+        if (roomId === 'public') {
+          if (!mounted) {
+            return
+          }
+
+          setRoom({
+  id: 'public',
+  matchId: matchSlug ?? '',
+  sport: sport ?? 'football',
+  name: 'Official Match Room',
+  description:
+    'The open Chattodoo room for everyone following this match.',
+  ownerId: 'chattodoo',
+  ownerName: 'Chattodoo',
+  maxMembers: 500,
+  createdAt: Date.now(),
+  type: 'community',
+})
+
+          return
+        }
+
         const result =
           await getCommunityRoom(
             roomId!,
@@ -204,6 +228,8 @@ function CommunityRoomPage() {
     }
   }, [
     roomId,
+    matchSlug,
+    sport,
   ])
 
   /* =======================================================
