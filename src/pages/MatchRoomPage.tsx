@@ -363,9 +363,11 @@ function MatchRoomPage() {
   }
 
   const officialRoom =
-    `/sports/${encodeURIComponent(
+    `/match/${encodeURIComponent(
       match.sport,
-    )}`
+    )}/${encodeURIComponent(
+      match.id,
+    )}/room/public`
 
   return (
     <div className="match-room-page">
