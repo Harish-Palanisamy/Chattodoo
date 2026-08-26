@@ -161,6 +161,94 @@ function sortLeagueMatches(
   )
 }
 
+function LiveClock({
+  match,
+}: {
+  match: SportMatch
+}) {
+  const [
+    elapsed,
+    setElapsed,
+  ] =
+    useState(0)
+
+  useEffect(() => {
+    if (
+      !isLiveMatch(match)
+    ) {
+      setElapsed(0)
+      return
+    }
+
+    setElapsed(0)
+
+    const interval =
+      window.setInterval(
+        () =>
+          setElapsed(
+            (value) =>
+              value + 1,
+          ),
+        1000,
+      )
+
+    return () =>
+      window.clearInterval(
+        interval,
+      )
+  }, [
+    match.id,
+    match.clockSeconds,
+    match.statusText,
+    match.state,
+  ])
+
+  const base =
+    match.clockSeconds
+
+  if (
+    typeof base === 'number' &&
+    Number.isFinite(base)
+  ) {
+    const total =
+      Math.max(
+        0,
+        Math.floor(base + elapsed),
+      )
+
+    const minutes =
+      Math.floor(
+        total / 60,
+      )
+
+    const seconds =
+      total % 60
+
+    return (
+      <>
+        {minutes}:
+        {String(
+          seconds,
+        ).padStart(
+          2,
+          '0',
+        )}
+      </>
+    )
+  }
+
+  /*
+   * Some ESPN soccer feeds expose only a minute string.
+   * We keep that official value rather than inventing seconds.
+   */
+  return (
+    <>
+      {match.statusText ||
+        'Live'}
+    </>
+  )
+}
+
 function MatchCard({
   match,
 }: {
@@ -293,8 +381,9 @@ function MatchCard({
               <Radio
                 size={14}
               />
-              {match.statusText ||
-                'Live'}
+              <LiveClock
+                match={match}
+              />
             </>
           ) : (
             <>

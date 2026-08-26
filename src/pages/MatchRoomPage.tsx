@@ -28,6 +28,9 @@ import {
 
 import {
   getMatch,
+  getMatchDetails,
+  isLiveMatch,
+  type MatchEvent,
   type SportMatch,
 } from '../lib/sportsApi'
 
@@ -36,6 +39,83 @@ import {
   subscribeToCommunityRooms,
   type CommunityRoom,
 } from '../lib/sportsRoomApi'
+
+function displayLiveClock(
+  match: SportMatch,
+  tick: number,
+) {
+  if (
+    !isLiveMatch(match)
+  ) {
+    return (
+      match.statusText ||
+      match.status
+    )
+  }
+
+  if (
+    typeof match.clockSeconds ===
+      'number' &&
+    Number.isFinite(
+      match.clockSeconds,
+    )
+  ) {
+    const total =
+      Math.max(
+        0,
+        Math.floor(
+          match.clockSeconds +
+            tick,
+        ),
+      )
+
+    const minutes =
+      Math.floor(
+        total / 60,
+      )
+
+    const seconds =
+      total % 60
+
+    return `${minutes}:${String(
+      seconds,
+    ).padStart(2, '0')}`
+  }
+
+  return (
+    match.statusText ||
+    'LIVE'
+  )
+}
+
+function EventIcon({
+  event,
+}: {
+  event: MatchEvent
+}) {
+  if (
+    event.type ===
+    'goal'
+  ) {
+    return <span>⚽</span>
+  }
+
+  if (
+    event.type ===
+    'red-card'
+  ) {
+    return <span>🟥</span>
+  }
+
+  if (
+    event.type ===
+    'yellow-card'
+  ) {
+    return <span>🟨</span>
+  }
+
+  return <span>•</span>
+}
 
 function MatchRoomPage() {
   const {
@@ -56,6 +136,20 @@ function MatchRoomPage() {
     useState<
       SportMatch | null
     >(null)
+
+  const [
+    matchEvents,
+    setMatchEvents,
+  ] =
+    useState<
+      MatchEvent[]
+    >([])
+
+  const [
+    clockTick,
+    setClockTick,
+  ] =
+    useState(0)
 
   const [
     loading,
@@ -135,14 +229,16 @@ function MatchRoomPage() {
   }, [])
 
   /* =======================================================
-     LOAD MATCH
+     LOAD MATCH + LIVE DETAILS
   ======================================================= */
 
   useEffect(() => {
     let cancelled =
       false
 
-    async function load() {
+    async function load(
+      first = false,
+    ) {
       if (
         !sport ||
         !matchSlug
@@ -150,18 +246,14 @@ function MatchRoomPage() {
         setError(
           'Invalid match URL.',
         )
-
-        setLoading(
-          false,
-        )
-
+        setLoading(false)
         return
       }
 
       try {
-        setLoading(
-          true,
-        )
+        if (first) {
+          setLoading(true)
+        }
 
         setError('')
 
@@ -171,11 +263,22 @@ function MatchRoomPage() {
             matchSlug,
           )
 
-        if (
-          !cancelled
-        ) {
-          setMatch(
-            result,
+        if (cancelled) {
+          return
+        }
+
+        setMatch(result)
+        setClockTick(0)
+
+        const details =
+          await getMatchDetails(
+            result.leagueCode,
+            result.id,
+          )
+
+        if (!cancelled) {
+          setMatchEvents(
+            details.events,
           )
         }
       } catch (
@@ -186,7 +289,8 @@ function MatchRoomPage() {
         )
 
         if (
-          !cancelled
+          !cancelled &&
+          first
         ) {
           setError(
             'Could not load this match.',
@@ -194,24 +298,62 @@ function MatchRoomPage() {
         }
       } finally {
         if (
-          !cancelled
+          !cancelled &&
+          first
         ) {
-          setLoading(
-            false,
-          )
+          setLoading(false)
         }
       }
     }
 
-    load()
+    load(true)
+
+    const refresh =
+      window.setInterval(
+        () =>
+          load(false),
+        20_000,
+      )
 
     return () => {
-      cancelled =
-        true
+      cancelled = true
+      window.clearInterval(
+        refresh,
+      )
     }
   }, [
     sport,
     matchSlug,
+  ])
+
+  useEffect(() => {
+    if (
+      !match ||
+      !isLiveMatch(match)
+    ) {
+      setClockTick(0)
+      return
+    }
+
+    const interval =
+      window.setInterval(
+        () =>
+          setClockTick(
+            (value) =>
+              value + 1,
+          ),
+        1000,
+      )
+
+    return () =>
+      window.clearInterval(
+        interval,
+      )
+  }, [
+    match?.id,
+    match?.clockSeconds,
+    match?.statusText,
+    match?.state,
   ])
 
   /* =======================================================
@@ -444,8 +586,13 @@ function MatchRoomPage() {
             </div>
 
             <small>
-              {match.statusText ||
-                match.status}
+              {isLiveMatch(match)
+                ? `LIVE · ${displayLiveClock(
+                    match,
+                    clockTick,
+                  )}`
+                : match.statusText ||
+                  match.status}
             </small>
           </div>
 
@@ -470,6 +617,148 @@ function MatchRoomPage() {
             <h2>
               {match.away}
             </h2>
+          </div>
+        </section>
+
+        {/* MATCH EVENTS */}
+
+        <section
+          className="room-panel"
+          style={{
+            marginTop: 24,
+          }}
+        >
+          <div className="panel-heading">
+            <span>
+              ⚡ MATCH EVENTS
+            </span>
+          </div>
+
+          <div
+            style={{
+              padding: 20,
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            {matchEvents.length ===
+            0 ? (
+              <p
+                style={{
+                  opacity: 0.65,
+                  margin: 0,
+                }}
+              >
+                No goal or card details
+                available from the match
+                feed yet.
+              </p>
+            ) : (
+              [...matchEvents]
+                .reverse()
+                .map(
+                  (event) => (
+                    <div
+                      key={
+                        event.id
+                      }
+                      style={{
+                        display:
+                          'grid',
+                        gridTemplateColumns:
+                          '36px minmax(0,1fr) auto',
+                        gap: 12,
+                        alignItems:
+                          'center',
+                        padding:
+                          '14px 16px',
+                        border:
+                          '1px solid rgba(255,255,255,.08)',
+                        borderRadius:
+                          14,
+                        background:
+                          'rgba(255,255,255,.025)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize:
+                            20,
+                        }}
+                      >
+                        <EventIcon
+                          event={
+                            event
+                          }
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          minWidth:
+                            0,
+                        }}
+                      >
+                        <strong>
+                          {event.athlete ||
+                            event.text}
+                        </strong>
+
+                        {event.type ===
+                          'goal' &&
+                          event.assist && (
+                            <div
+                              style={{
+                                opacity:
+                                  0.68,
+                                marginTop:
+                                  4,
+                                fontSize:
+                                  13,
+                              }}
+                            >
+                              Assist:{' '}
+                              {
+                                event.assist
+                              }
+                            </div>
+                          )}
+
+                        {event.type ===
+                          'goal' &&
+                          (event.penalty ||
+                            event.ownGoal) && (
+                            <div
+                              style={{
+                                opacity:
+                                  0.68,
+                                marginTop:
+                                  4,
+                                fontSize:
+                                  13,
+                              }}
+                            >
+                              {event.penalty
+                                ? 'Penalty'
+                                : 'Own goal'}
+                            </div>
+                          )}
+                      </div>
+
+                      <strong
+                        style={{
+                          color:
+                            '#a78bfa',
+                          whiteSpace:
+                            'nowrap',
+                        }}
+                      >
+                        {event.minute}
+                      </strong>
+                    </div>
+                  ),
+                )
+            )}
           </div>
         </section>
 
@@ -612,46 +901,111 @@ function MatchRoomPage() {
                       )}/${encodeURIComponent(
                         match.id,
                       )}/room/${room.id}`}
-                      className="sports-match-card"
                       style={{
-                        minHeight:
+                        display:
+                          'grid',
+                        gridTemplateColumns:
+                          'minmax(0,1fr) auto',
+                        gap: 24,
+                        alignItems:
+                          'center',
+                        padding:
+                          '20px 22px',
+                        border:
+                          '1px solid rgba(255,255,255,.09)',
+                        borderRadius:
+                          16,
+                        background:
+                          'linear-gradient(100deg, rgba(255,255,255,.025), rgba(139,92,246,.08))',
+                        color:
+                          'inherit',
+                        textDecoration:
+                          'none',
+                        minWidth:
                           0,
                       }}
                     >
-                      <div>
-                        <strong>
-                          {
-                            room.name
-                          }
+                      <div
+                        style={{
+                          minWidth:
+                            0,
+                        }}
+                      >
+                        <strong
+                          style={{
+                            display:
+                              'block',
+                            fontSize:
+                              16,
+                            overflowWrap:
+                              'anywhere',
+                          }}
+                        >
+                          {room.name}
                         </strong>
 
                         {room.description && (
-                          <p>
+                          <p
+                            style={{
+                              margin:
+                                '7px 0 0',
+                              opacity:
+                                0.66,
+                              lineHeight:
+                                1.45,
+                              overflowWrap:
+                                'anywhere',
+                            }}
+                          >
                             {
                               room.description
                             }
                           </p>
                         )}
-                      </div>
 
-                      <div className="match-footer">
-                        <span>
+                        <span
+                          style={{
+                            display:
+                              'inline-flex',
+                            alignItems:
+                              'center',
+                            gap: 6,
+                            marginTop:
+                              10,
+                            opacity:
+                              0.7,
+                            fontSize:
+                              13,
+                          }}
+                        >
                           <Users
                             size={14}
                           />
-
                           Up to{' '}
                           {
                             room.maxMembers
                           }
                         </span>
+                      </div>
 
-                        <span>
-                          Created by{' '}
+                      <div
+                        style={{
+                          textAlign:
+                            'right',
+                          whiteSpace:
+                            'nowrap',
+                          opacity:
+                            0.85,
+                          fontSize:
+                            14,
+                        }}
+                      >
+                        Created by{' '}
+                        <strong>
                           {
                             room.ownerName
                           }
-                        </span>
+                        </strong>
                       </div>
                     </Link>
                   ),

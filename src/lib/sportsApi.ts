@@ -17,6 +17,9 @@ export type SportMatch = {
   status: string
   statusText: string
 
+  clockSeconds: number | null
+  period: number | null
+
   state: 'pre' | 'in' | 'post' | string
   completed: boolean
 
@@ -59,6 +62,62 @@ type EspnStatusType = {
   description?: string
   detail?: string
   shortDetail?: string
+  period?: number
+  clock?: number
+}
+
+export type MatchEvent = {
+  id: string
+  type: 'goal' | 'red-card' | 'yellow-card' | 'other'
+  text: string
+  minute: string
+  athlete?: string
+  assist?: string
+  teamId?: string
+  ownGoal?: boolean
+  penalty?: boolean
+}
+
+export type MatchDetails = {
+  events: MatchEvent[]
+}
+
+type EspnPlay = {
+  id?: string
+  text?: string
+  shortText?: string
+  clock?: {
+    displayValue?: string
+    value?: number
+  }
+  type?: {
+    text?: string
+    abbreviation?: string
+    id?: string
+  }
+  team?: {
+    id?: string
+  }
+  participants?: Array<{
+    athlete?: {
+      id?: string
+      displayName?: string
+      shortName?: string
+      fullName?: string
+    }
+    type?: string
+  }>
+  scoringPlay?: boolean
+  penaltyKick?: boolean
+  ownGoal?: boolean
+  yellowCard?: boolean
+  redCard?: boolean
+}
+
+type EspnSummaryResponse = {
+  plays?: EspnPlay[]
+  keyEvents?: EspnPlay[]
+  details?: EspnPlay[]
 }
 
 type EspnCompetition = {
@@ -366,6 +425,16 @@ function convertEvent(
       getStatusText(
         event,
       ),
+
+    clockSeconds:
+      typeof status.clock === 'number'
+        ? status.clock
+        : null,
+
+    period:
+      typeof status.period === 'number'
+        ? status.period
+        : null,
 
     state:
       status.state ?? '',
@@ -972,6 +1041,184 @@ export async function searchTeamMatches(
         .toLowerCase()
         .includes(value),
   )
+}
+
+
+function normalizePlayType(
+  play: EspnPlay,
+): MatchEvent['type'] {
+  const raw =
+    `${play.type?.text ?? ''} ${play.type?.abbreviation ?? ''} ${play.text ?? ''}`
+      .toLowerCase()
+
+  if (
+    play.redCard ||
+    raw.includes('red card')
+  ) {
+    return 'red-card'
+  }
+
+  if (
+    play.yellowCard ||
+    raw.includes('yellow card')
+  ) {
+    return 'yellow-card'
+  }
+
+  if (
+    play.scoringPlay ||
+    raw.includes('goal')
+  ) {
+    return 'goal'
+  }
+
+  return 'other'
+}
+
+function participantName(
+  play: EspnPlay,
+  wanted: 'assist' | 'scorer',
+) {
+  const participants =
+    play.participants ?? []
+
+  if (wanted === 'assist') {
+    const assist =
+      participants.find(
+        (participant) =>
+          (participant.type ?? '')
+            .toLowerCase()
+            .includes('assist'),
+      )
+
+    return (
+      assist?.athlete?.displayName ??
+      assist?.athlete?.shortName ??
+      assist?.athlete?.fullName
+    )
+  }
+
+  const scorer =
+    participants.find(
+      (participant) =>
+        !(participant.type ?? '')
+          .toLowerCase()
+          .includes('assist'),
+    )
+
+  return (
+    scorer?.athlete?.displayName ??
+    scorer?.athlete?.shortName ??
+    scorer?.athlete?.fullName
+  )
+}
+
+function convertPlay(
+  play: EspnPlay,
+  index: number,
+): MatchEvent | null {
+  const type =
+    normalizePlayType(play)
+
+  if (type === 'other') {
+    return null
+  }
+
+  const athlete =
+    participantName(
+      play,
+      'scorer',
+    )
+
+  const assist =
+    participantName(
+      play,
+      'assist',
+    )
+
+  return {
+    id:
+      play.id ??
+      `event-${index}-${play.clock?.displayValue ?? ''}`,
+
+    type,
+
+    text:
+      play.text ??
+      play.shortText ??
+      play.type?.text ??
+      'Match event',
+
+    minute:
+      play.clock?.displayValue ??
+      '',
+
+    athlete,
+    assist,
+
+    teamId:
+      play.team?.id,
+
+    ownGoal:
+      Boolean(
+        play.ownGoal,
+      ),
+
+    penalty:
+      Boolean(
+        play.penaltyKick,
+      ),
+  }
+}
+
+export async function getMatchDetails(
+  leagueCode: string,
+  matchId: string,
+): Promise<MatchDetails> {
+  const url =
+    `${ESPN_BASE}/${leagueCode}/summary` +
+    `?event=${encodeURIComponent(matchId)}` +
+    `&_=${Date.now()}`
+
+  const response =
+    await fetch(
+      url,
+      {
+        cache: 'no-store',
+      },
+    )
+
+  if (!response.ok) {
+    return {
+      events: [],
+    }
+  }
+
+  const data:
+    EspnSummaryResponse =
+    await response.json()
+
+  const raw =
+    data.plays ??
+    data.keyEvents ??
+    data.details ??
+    []
+
+  const events =
+    raw
+      .map(
+        convertPlay,
+      )
+      .filter(
+        (
+          event,
+        ): event is MatchEvent =>
+          event !== null,
+      )
+
+  return {
+    events,
+  }
 }
 
 export async function getMatch(

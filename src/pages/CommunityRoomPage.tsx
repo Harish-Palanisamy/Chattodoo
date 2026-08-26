@@ -26,6 +26,14 @@ import {
 } from '../lib/firebase'
 
 import {
+  getMatch,
+  getMatchDetails,
+  isLiveMatch,
+  type MatchEvent,
+  type SportMatch,
+} from '../lib/sportsApi'
+
+import {
   addReaction,
   addCommunityReaction,
   getCommunityRoom,
@@ -45,6 +53,82 @@ import {
   type RoomMessage,
   type RoomReactions,
 } from '../lib/sportsRoomApi'
+
+function liveClockText(
+  match: SportMatch,
+  tick: number,
+) {
+  if (
+    !isLiveMatch(match)
+  ) {
+    return (
+      match.statusText ||
+      match.status
+    )
+  }
+
+  if (
+    typeof match.clockSeconds ===
+      'number' &&
+    Number.isFinite(
+      match.clockSeconds,
+    )
+  ) {
+    const total =
+      Math.max(
+        0,
+        Math.floor(
+          match.clockSeconds +
+            tick,
+        ),
+      )
+
+    const minutes =
+      Math.floor(
+        total / 60,
+      )
+
+    const seconds =
+      total % 60
+
+    return `${minutes}:${String(
+      seconds,
+    ).padStart(2, '0')}`
+  }
+
+  return (
+    match.statusText ||
+    'LIVE'
+  )
+}
+
+function MatchEventIcon({
+  event,
+}: {
+  event: MatchEvent
+}) {
+  if (
+    event.type === 'goal'
+  ) {
+    return <span>⚽</span>
+  }
+
+  if (
+    event.type ===
+    'red-card'
+  ) {
+    return <span>🟥</span>
+  }
+
+  if (
+    event.type ===
+    'yellow-card'
+  ) {
+    return <span>🟨</span>
+  }
+
+  return <span>•</span>
+}
 
 function CommunityRoomPage() {
   const {
@@ -66,6 +150,28 @@ function CommunityRoomPage() {
     >(
       auth.currentUser,
     )
+
+  const [
+    match,
+    setMatch,
+  ] =
+    useState<
+      SportMatch | null
+    >(null)
+
+  const [
+    matchEvents,
+    setMatchEvents,
+  ] =
+    useState<
+      MatchEvent[]
+    >([])
+
+  const [
+    clockTick,
+    setClockTick,
+  ] =
+    useState(0)
 
   const [
     room,
@@ -142,6 +248,106 @@ function CommunityRoomPage() {
       setUser,
     )
   }, [])
+
+  /* =======================================================
+     LOAD MATCH + LIVE DETAILS
+  ======================================================= */
+
+  useEffect(() => {
+    if (
+      !sport ||
+      !matchSlug
+    ) {
+      return
+    }
+
+    let cancelled =
+      false
+
+    async function loadMatchData() {
+      try {
+        const result =
+          await getMatch(
+            sport!,
+            matchSlug!,
+          )
+
+        if (cancelled) {
+          return
+        }
+
+        setMatch(result)
+        setClockTick(0)
+
+        const details =
+          await getMatchDetails(
+            result.leagueCode,
+            result.id,
+          )
+
+        if (!cancelled) {
+          setMatchEvents(
+            details.events,
+          )
+        }
+      } catch (
+        matchError
+      ) {
+        console.error(
+          'Could not load match inside room:',
+          matchError,
+        )
+      }
+    }
+
+    loadMatchData()
+
+    const refresh =
+      window.setInterval(
+        loadMatchData,
+        20_000,
+      )
+
+    return () => {
+      cancelled = true
+      window.clearInterval(
+        refresh,
+      )
+    }
+  }, [
+    sport,
+    matchSlug,
+  ])
+
+  useEffect(() => {
+    if (
+      !match ||
+      !isLiveMatch(match)
+    ) {
+      setClockTick(0)
+      return
+    }
+
+    const interval =
+      window.setInterval(
+        () =>
+          setClockTick(
+            (value) =>
+              value + 1,
+          ),
+        1000,
+      )
+
+    return () =>
+      window.clearInterval(
+        interval,
+      )
+  }, [
+    match?.id,
+    match?.clockSeconds,
+    match?.statusText,
+    match?.state,
+  ])
 
   /* =======================================================
      LOAD ROOM
@@ -687,6 +893,311 @@ function CommunityRoomPage() {
               </div>
             </div>
           </div>
+
+          {/* SCORECARD INSIDE ROOM */}
+
+          {match && (
+            <div
+              style={{
+                margin:
+                  '18px 20px 0',
+                border:
+                  '1px solid rgba(255,255,255,.09)',
+                borderRadius:
+                  18,
+                overflow:
+                  'hidden',
+                background:
+                  'linear-gradient(135deg, rgba(139,92,246,.12), rgba(255,255,255,.025))',
+              }}
+            >
+              <div
+                style={{
+                  display:
+                    'flex',
+                  justifyContent:
+                    'space-between',
+                  gap: 16,
+                  alignItems:
+                    'center',
+                  padding:
+                    '14px 18px',
+                  borderBottom:
+                    '1px solid rgba(255,255,255,.08)',
+                  flexWrap:
+                    'wrap',
+                }}
+              >
+                <div>
+                  <strong>
+                    {
+                      match.competition
+                    }
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    fontWeight:
+                      800,
+                    color:
+                      isLiveMatch(
+                        match,
+                      )
+                        ? '#c084fc'
+                        : 'inherit',
+                  }}
+                >
+                  {isLiveMatch(
+                    match,
+                  )
+                    ? `● LIVE · ${liveClockText(
+                        match,
+                        clockTick,
+                      )}`
+                    : match.statusText ||
+                      match.status}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display:
+                    'grid',
+                  gridTemplateColumns:
+                    'minmax(0,1fr) auto minmax(0,1fr)',
+                  gap: 22,
+                  alignItems:
+                    'center',
+                  padding:
+                    '24px 18px',
+                }}
+              >
+                <div
+                  style={{
+                    display:
+                      'flex',
+                    alignItems:
+                      'center',
+                    gap: 12,
+                    minWidth:
+                      0,
+                  }}
+                >
+                  {match.homeLogo && (
+                    <img
+                      src={
+                        match.homeLogo
+                      }
+                      alt=""
+                      style={{
+                        width:
+                          44,
+                        height:
+                          44,
+                        objectFit:
+                          'contain',
+                      }}
+                    />
+                  )}
+
+                  <strong
+                    style={{
+                      overflowWrap:
+                        'anywhere',
+                    }}
+                  >
+                    {match.home}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    fontSize:
+                      28,
+                    fontWeight:
+                      900,
+                    whiteSpace:
+                      'nowrap',
+                  }}
+                >
+                  {match.homeScore ??
+                    '—'}{' '}
+                  <span
+                    style={{
+                      opacity:
+                        0.45,
+                    }}
+                  >
+                    –
+                  </span>{' '}
+                  {match.awayScore ??
+                    '—'}
+                </div>
+
+                <div
+                  style={{
+                    display:
+                      'flex',
+                    alignItems:
+                      'center',
+                    justifyContent:
+                      'flex-end',
+                    gap: 12,
+                    minWidth:
+                      0,
+                    textAlign:
+                      'right',
+                  }}
+                >
+                  <strong
+                    style={{
+                      overflowWrap:
+                        'anywhere',
+                    }}
+                  >
+                    {match.away}
+                  </strong>
+
+                  {match.awayLogo && (
+                    <img
+                      src={
+                        match.awayLogo
+                      }
+                      alt=""
+                      style={{
+                        width:
+                          44,
+                        height:
+                          44,
+                        objectFit:
+                          'contain',
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {matchEvents.length >
+                0 && (
+                <div
+                  style={{
+                    padding:
+                      '0 18px 18px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        12,
+                      fontWeight:
+                        800,
+                      letterSpacing:
+                        '.12em',
+                      opacity:
+                        0.65,
+                      marginBottom:
+                        10,
+                    }}
+                  >
+                    MATCH EVENTS
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        'grid',
+                      gap: 8,
+                    }}
+                  >
+                    {[...matchEvents]
+                      .reverse()
+                      .slice(
+                        0,
+                        8,
+                      )
+                      .map(
+                        (
+                          event,
+                        ) => (
+                          <div
+                            key={
+                              event.id
+                            }
+                            style={{
+                              display:
+                                'grid',
+                              gridTemplateColumns:
+                                '28px minmax(0,1fr) auto',
+                              alignItems:
+                                'center',
+                              gap: 10,
+                              padding:
+                                '10px 12px',
+                              borderRadius:
+                                12,
+                              background:
+                                'rgba(255,255,255,.035)',
+                            }}
+                          >
+                            <MatchEventIcon
+                              event={
+                                event
+                              }
+                            />
+
+                            <div
+                              style={{
+                                minWidth:
+                                  0,
+                              }}
+                            >
+                              <strong>
+                                {event.athlete ||
+                                  event.text}
+                              </strong>
+
+                              {event.type ===
+                                'goal' &&
+                                event.assist && (
+                                  <div
+                                    style={{
+                                      marginTop:
+                                        3,
+                                      opacity:
+                                        0.65,
+                                      fontSize:
+                                        12,
+                                    }}
+                                  >
+                                    Assist:{' '}
+                                    {
+                                      event.assist
+                                    }
+                                  </div>
+                                )}
+                            </div>
+
+                            <strong
+                              style={{
+                                color:
+                                  '#c084fc',
+                                whiteSpace:
+                                  'nowrap',
+                              }}
+                            >
+                              {
+                                event.minute
+                              }
+                            </strong>
+                          </div>
+                        ),
+                      )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* CHAT */}
 
