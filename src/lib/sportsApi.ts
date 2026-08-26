@@ -472,10 +472,16 @@ export function isLiveMatch(
     status.includes('live') ||
     status.includes('in progress') ||
     status.includes('in_progress') ||
+    status.includes('in-progress') ||
     status.includes('in play') ||
     status.includes('in-play') ||
+    status.includes('status_in_progress') ||
     status.includes('halftime') ||
-    status.includes('half time')
+    status.includes('half time') ||
+    status.includes('1st half') ||
+    status.includes('2nd half') ||
+    status.includes('extra time') ||
+    status.includes('penalties')
   )
 }
 
