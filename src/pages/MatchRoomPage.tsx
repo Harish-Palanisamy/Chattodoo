@@ -53,6 +53,10 @@ function displayLiveClock(
     )
   }
 
+  let baseSeconds:
+    number | null =
+    null
+
   if (
     typeof match.clockSeconds ===
       'number' &&
@@ -60,32 +64,53 @@ function displayLiveClock(
       match.clockSeconds,
     )
   ) {
-    const total =
-      Math.max(
-        0,
-        Math.floor(
-          match.clockSeconds +
-            tick,
-        ),
-      )
-
-    const minutes =
+    baseSeconds =
       Math.floor(
-        total / 60,
+        match.clockSeconds,
+      )
+  } else {
+    const minuteMatch =
+      (
+        match.statusText ||
+        match.status
+      ).match(
+        /(\d{1,3})/,
       )
 
-    const seconds =
-      total % 60
-
-    return `${minutes}:${String(
-      seconds,
-    ).padStart(2, '0')}`
+    if (minuteMatch) {
+      baseSeconds =
+        Number(
+          minuteMatch[1],
+        ) * 60
+    }
   }
 
-  return (
-    match.statusText ||
-    'LIVE'
-  )
+  if (
+    baseSeconds === null
+  ) {
+    return (
+      match.statusText ||
+      'LIVE'
+    )
+  }
+
+  const total =
+    Math.max(
+      0,
+      baseSeconds + tick,
+    )
+
+  const minutes =
+    Math.floor(
+      total / 60,
+    )
+
+  const seconds =
+    total % 60
+
+  return `${minutes}:${String(
+    seconds,
+  ).padStart(2, '0')}`
 }
 
 function EventIcon({

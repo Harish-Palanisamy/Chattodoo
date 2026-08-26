@@ -203,48 +203,72 @@ function LiveClock({
     match.state,
   ])
 
-  const base =
-    match.clockSeconds
+  let baseSeconds:
+    number | null =
+    null
 
   if (
-    typeof base === 'number' &&
-    Number.isFinite(base)
+    typeof match.clockSeconds ===
+      'number' &&
+    Number.isFinite(
+      match.clockSeconds,
+    )
   ) {
-    const total =
-      Math.max(
-        0,
-        Math.floor(base + elapsed),
-      )
-
-    const minutes =
+    baseSeconds =
       Math.floor(
-        total / 60,
+        match.clockSeconds,
+      )
+  } else {
+    const minuteMatch =
+      (
+        match.statusText ||
+        match.status
+      ).match(
+        /(\d{1,3})/,
       )
 
-    const seconds =
-      total % 60
+    if (minuteMatch) {
+      baseSeconds =
+        Number(
+          minuteMatch[1],
+        ) * 60
+    }
+  }
 
+  if (
+    baseSeconds === null
+  ) {
     return (
       <>
-        {minutes}:
-        {String(
-          seconds,
-        ).padStart(
-          2,
-          '0',
-        )}
+        {match.statusText ||
+          'Live'}
       </>
     )
   }
 
-  /*
-   * Some ESPN soccer feeds expose only a minute string.
-   * We keep that official value rather than inventing seconds.
-   */
+  const total =
+    Math.max(
+      0,
+      baseSeconds + elapsed,
+    )
+
+  const minutes =
+    Math.floor(
+      total / 60,
+    )
+
+  const seconds =
+    total % 60
+
   return (
     <>
-      {match.statusText ||
-        'Live'}
+      {minutes}:
+      {String(
+        seconds,
+      ).padStart(
+        2,
+        '0',
+      )}
     </>
   )
 }
