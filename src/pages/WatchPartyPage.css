@@ -1,0 +1,618 @@
+.watch-page {
+  min-height: 100vh;
+  background: #0b0908;
+  color: #f5eadb;
+}
+
+/* =========================================
+   NAVBAR
+   ========================================= */
+
+.watch-navbar {
+  height: 70px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid
+    rgba(245, 234, 219, 0.08);
+  background: #100d0b;
+}
+
+.watch-logo {
+  color: #f5eadb;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.watch-logo span {
+  color: #d76b35;
+}
+
+.watch-room-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c5b7aa;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.watch-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e65d4f;
+  box-shadow:
+    0 0 12px
+    rgba(230, 93, 79, 0.8);
+}
+
+.watch-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.leave-room {
+  color: #a99b8e;
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.leave-room:hover {
+  color: #f5eadb;
+}
+
+/* =========================================
+   MAIN LAYOUT
+   ========================================= */
+
+.watch-layout {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 35px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) 360px;
+  gap: 24px;
+}
+
+/* =========================================
+   VIDEO
+   ========================================= */
+
+.video-section {
+  min-width: 0;
+}
+
+.video-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #050505;
+  border: 1px solid
+    rgba(245, 234, 219, 0.08);
+  overflow: hidden;
+}
+
+.video-wrapper video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+.video-information {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0;
+}
+
+.video-information span {
+  color: #d76b35;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+.video-information h1 {
+  margin: 7px 0 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+}
+
+.share-button {
+  padding: 11px 16px;
+  border: 1px solid
+    rgba(245, 234, 219, 0.12);
+  border-radius: 4px;
+  background: transparent;
+  color: #f5eadb;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.share-button:hover {
+  background: rgba(
+    245,
+    234,
+    219,
+    0.06
+  );
+}
+
+/* =========================================
+   VIEWER BAR
+   ========================================= */
+
+.watching-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #15100e;
+  border: 1px solid
+    rgba(245, 234, 219, 0.07);
+}
+
+.avatars {
+  display: flex;
+}
+
+.avatars span {
+  width: 28px;
+  height: 28px;
+  margin-left: -6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #15100e;
+  background: #8b5cf6;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.avatars span:first-child {
+  margin-left: 0;
+  background: #d76b35;
+}
+
+.avatars span:nth-child(2) {
+  background: #635bce;
+}
+
+.watching-bar strong {
+  font-size: 0.8rem;
+}
+
+.watching-bar small {
+  color: #8d8177;
+}
+
+/* =========================================
+   CHAT
+   ========================================= */
+
+.chat-panel {
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  background: #12100e;
+  border: 1px solid
+    rgba(245, 234, 219, 0.08);
+}
+
+.chat-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid
+    rgba(245, 234, 219, 0.07);
+}
+
+.chat-header span:first-child {
+  color: #d76b35;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.chat-header h2 {
+  margin: 7px 0 0;
+  font-size: 1rem;
+}
+
+.online-count {
+  color: #62c28a;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+/* =========================================
+   REACTION BUTTONS
+   ========================================= */
+
+.reaction-row {
+  display: flex;
+  gap: 7px;
+  padding: 14px 18px;
+  border-bottom: 1px solid
+    rgba(245, 234, 219, 0.06);
+}
+
+.reaction-row button {
+  width: 38px;
+  height: 34px;
+  border: 1px solid
+    rgba(245, 234, 219, 0.08);
+  border-radius: 4px;
+  background: #1a1512;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+  font-size: 1rem;
+}
+
+.reaction-row button:hover {
+  transform: translateY(-2px);
+  background: #251d18;
+}
+
+.reaction-row button:active {
+  transform: scale(0.9);
+}
+
+/* =========================================
+   FLOATING REACTIONS
+   ========================================= */
+
+.floating-reactions {
+  position: fixed;
+  right: 390px;
+  bottom: 80px;
+  width: 180px;
+  height: 280px;
+  pointer-events: none;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.floating-reaction {
+  position: absolute;
+  right: 50%;
+  bottom: 5px;
+  font-size: 2rem;
+  line-height: 1;
+  animation:
+    float-reaction 3s
+    ease-out forwards;
+  opacity: 0;
+}
+
+.floating-reaction:nth-child(2n) {
+  right: 25%;
+}
+
+.floating-reaction:nth-child(3n) {
+  right: 70%;
+}
+
+@keyframes float-reaction {
+  0% {
+    transform:
+      translate(0, 20px)
+      scale(0.7);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    transform:
+      translate(-20px, -240px)
+      scale(1.15);
+    opacity: 0;
+  }
+}
+
+/* =========================================
+   MESSAGES
+   ========================================= */
+
+.messages {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.chat-message {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.chat-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #8b5cf6;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.chat-message strong {
+  font-size: 0.72rem;
+}
+
+.chat-message p {
+  margin: 5px 0 0;
+  color: #d1c5ba;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* =========================================
+   EMPTY CHAT
+   ========================================= */
+
+.empty-chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #746a62;
+}
+
+.empty-chat span {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.empty-chat p {
+  margin: 0 0 5px;
+  color: #b7aaa0;
+  font-size: 0.82rem;
+}
+
+.empty-chat small {
+  max-width: 190px;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+/* =========================================
+   MESSAGE INPUT
+   ========================================= */
+
+.message-form {
+  display: flex;
+  padding: 12px;
+  border-top: 1px solid
+    rgba(245, 234, 219, 0.07);
+}
+
+.message-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid
+    rgba(245, 234, 219, 0.08);
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
+  outline: none;
+  background: #0d0b0a;
+  color: #f5eadb;
+}
+
+.message-form input::placeholder {
+  color: #625952;
+}
+
+.message-form button {
+  width: 45px;
+  border: 0;
+  border-radius: 0 4px 4px 0;
+  background: #d76b35;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* =========================================
+   LOADING / ERROR
+   ========================================= */
+
+.loading-screen,
+.error-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.loading-screen {
+  color: #a99b8e;
+}
+
+.loading-dot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #d76b35;
+}
+
+.error-screen h1 {
+  margin-bottom: 8px;
+}
+
+.error-screen p {
+  color: #9d9086;
+}
+
+.error-screen a {
+  color: #d76b35;
+  text-decoration: none;
+}
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+
+@media (max-width: 1100px) {
+  .floating-reactions {
+    right: 380px;
+  }
+}
+
+@media (max-width: 950px) {
+  .watch-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-panel {
+    min-height: 500px;
+  }
+
+  .floating-reactions {
+    right: 30px;
+    bottom: 40px;
+  }
+}
+
+@media (max-width: 600px) {
+  .watch-navbar {
+    padding: 0 15px;
+  }
+
+  .watch-room-title {
+    display: none;
+  }
+
+  .watch-navbar-actions {
+    gap: 8px;
+  }
+
+  .watch-layout {
+    padding: 15px;
+  }
+
+  .video-information {
+    align-items: flex-start;
+    gap: 15px;
+    flex-direction: column;
+  }
+
+  .share-button {
+    width: 100%;
+  }
+
+  .reaction-row {
+    justify-content: space-between;
+  }
+
+  .reaction-row button {
+    flex: 1;
+  }
+
+  .floating-reactions {
+    right: 15px;
+    bottom: 25px;
+    width: 140px;
+    height: 220px;
+  }
+}
+/* =========================================
+   FLOATING REACTIONS
+   ========================================= */
+
+.video-section {
+  position: relative;
+}
+
+.floating-reactions {
+  position: absolute;
+  left: 0;
+  bottom: 90px;
+  width: 100%;
+  height: 180px;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.floating-reaction {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  font-size: 2rem;
+  animation: reaction-float 2s ease-out forwards;
+}
+
+.floating-reaction:nth-child(2) {
+  left: 35%;
+}
+
+.floating-reaction:nth-child(3) {
+  left: 65%;
+}
+
+.floating-reaction:nth-child(4) {
+  left: 45%;
+}
+
+.floating-reaction:nth-child(5) {
+  left: 55%;
+}
+
+@keyframes reaction-float {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.7);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-160px) scale(1.25);
+  }
+}
+/* =========================================
+   YOUTUBE PLAYER
+   ========================================= */
+
+.youtube-player {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.youtube-player iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+}
