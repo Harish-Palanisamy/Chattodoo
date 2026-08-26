@@ -817,22 +817,13 @@ function CommunityRoomPage() {
         )
       : []
 
-  const unassignedEvents =
-    match
-      ? matchEvents.filter(
-          (event) =>
-            !event.teamId ||
-            (event.teamId !==
-              match.homeTeamId &&
-              event.teamId !==
-                match.awayTeamId),
-        )
-      : []
-
-  function renderTeamEvents(
-    events: MatchEvent[],
-    align: 'left' | 'right',
-  ) {
+  function TeamEvents({
+    events,
+    align,
+  }: {
+    events: MatchEvent[]
+    align: 'left' | 'right'
+  }) {
     if (events.length === 0) {
       return null
     }
@@ -841,8 +832,8 @@ function CommunityRoomPage() {
       <div
         style={{
           display: 'grid',
-          gap: 6,
-          marginTop: 10,
+          gap: 8,
+          marginTop: 12,
           justifyItems:
             align === 'right'
               ? 'end'
@@ -855,23 +846,22 @@ function CommunityRoomPage() {
               key={event.id}
               style={{
                 display: 'grid',
-                gap: 2,
-                maxWidth: 240,
-                textAlign:
-                  align,
+                gap: 3,
+                textAlign: align,
+                maxWidth: 250,
               }}
             >
               <div
                 style={{
                   display: 'flex',
-                  alignItems:
-                    'center',
-                  gap: 7,
+                  alignItems: 'center',
                   justifyContent:
                     align === 'right'
                       ? 'flex-end'
                       : 'flex-start',
+                  gap: 7,
                   fontSize: 13,
+                  flexWrap: 'wrap',
                 }}
               >
                 <MatchEventIcon
@@ -886,12 +876,9 @@ function CommunityRoomPage() {
                 {event.minute && (
                   <span
                     style={{
-                      color:
-                        '#c084fc',
-                      fontWeight:
-                        800,
-                      whiteSpace:
-                        'nowrap',
+                      color: '#c084fc',
+                      fontWeight: 800,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {event.minute}
@@ -904,34 +891,10 @@ function CommunityRoomPage() {
                 event.assist && (
                   <small
                     style={{
-                      opacity: 0.62,
+                      opacity: 0.64,
                     }}
                   >
                     Assist: {event.assist}
-                  </small>
-                )}
-
-              {event.type ===
-                'goal' &&
-                event.penalty && (
-                  <small
-                    style={{
-                      opacity: 0.62,
-                    }}
-                  >
-                    Penalty
-                  </small>
-                )}
-
-              {event.type ===
-                'goal' &&
-                event.ownGoal && (
-                  <small
-                    style={{
-                      opacity: 0.62,
-                    }}
-                  >
-                    Own goal
                   </small>
                 )}
             </div>
@@ -1047,108 +1010,81 @@ function CommunityRoomPage() {
           {match && (
             <div
               style={{
-                margin:
-                  '18px 20px 0',
+                margin: '18px 20px 0',
                 border:
                   '1px solid rgba(255,255,255,.09)',
-                borderRadius:
-                  18,
-                overflow:
-                  'hidden',
+                borderRadius: 18,
+                overflow: 'hidden',
                 background:
                   'linear-gradient(135deg, rgba(139,92,246,.12), rgba(255,255,255,.025))',
               }}
             >
               <div
                 style={{
-                  display:
-                    'flex',
+                  display: 'flex',
                   justifyContent:
                     'space-between',
                   gap: 16,
-                  alignItems:
-                    'center',
-                  padding:
-                    '14px 18px',
+                  alignItems: 'center',
+                  padding: '14px 18px',
                   borderBottom:
                     '1px solid rgba(255,255,255,.08)',
-                  flexWrap:
-                    'wrap',
+                  flexWrap: 'wrap',
                 }}
               >
-                <div>
-                  <strong>
-                    {
-                      match.competition
-                    }
-                  </strong>
-                </div>
+                <strong>
+                  {match.competition}
+                </strong>
 
-                <div
+                <strong
                   style={{
-                    fontWeight:
-                      800,
                     color:
-                      isLiveMatch(
-                        match,
-                      )
+                      isLiveMatch(match)
                         ? '#c084fc'
                         : 'inherit',
                   }}
                 >
-                  {isLiveMatch(
-                    match,
-                  )
+                  {isLiveMatch(match)
                     ? `● LIVE · ${liveClockText(
                         match,
                         clockTick,
                       )}`
                     : match.statusText ||
                       match.status}
-                </div>
+                </strong>
               </div>
 
               <div
                 style={{
-                  display:
-                    'grid',
+                  display: 'grid',
                   gridTemplateColumns:
                     'minmax(0,1fr) auto minmax(0,1fr)',
                   gap: 22,
-                  alignItems:
-                    'start',
-                  padding:
-                    '24px 18px',
+                  alignItems: 'start',
+                  padding: '24px 18px',
                 }}
               >
+                {/* HOME TEAM + HOME EVENTS */}
                 <div
                   style={{
-                    minWidth:
-                      0,
+                    minWidth: 0,
                   }}
                 >
                   <div
                     style={{
-                      display:
-                        'flex',
-                      alignItems:
-                        'center',
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 12,
                     }}
                   >
                     {match.homeLogo && (
                       <img
-                        src={
-                          match.homeLogo
-                        }
+                        src={match.homeLogo}
                         alt=""
                         style={{
-                          width:
-                            44,
-                          height:
-                            44,
-                          objectFit:
-                            'contain',
+                          width: 44,
+                          height: 44,
+                          objectFit: 'contain',
                         }}
                       />
                     )}
@@ -1163,52 +1099,44 @@ function CommunityRoomPage() {
                     </strong>
                   </div>
 
-                  {renderTeamEvents(
-                    homeEvents,
-                    'left',
-                  )}
+                  <TeamEvents
+                    events={homeEvents}
+                    align="left"
+                  />
                 </div>
 
+                {/* SCORE */}
                 <div
                   style={{
-                    fontSize:
-                      28,
-                    fontWeight:
-                      900,
-                    whiteSpace:
-                      'nowrap',
-                    paddingTop:
-                      7,
+                    fontSize: 30,
+                    fontWeight: 900,
+                    whiteSpace: 'nowrap',
+                    paddingTop: 7,
                   }}
                 >
-                  {match.homeScore ??
-                    '—'}{' '}
+                  {match.homeScore ?? '—'}
                   <span
                     style={{
-                      opacity:
-                        0.45,
+                      opacity: 0.45,
+                      margin: '0 8px',
                     }}
                   >
                     –
-                  </span>{' '}
-                  {match.awayScore ??
-                    '—'}
+                  </span>
+                  {match.awayScore ?? '—'}
                 </div>
 
+                {/* AWAY TEAM + AWAY EVENTS */}
                 <div
                   style={{
-                    minWidth:
-                      0,
-                    textAlign:
-                      'right',
+                    minWidth: 0,
+                    textAlign: 'right',
                   }}
                 >
                   <div
                     style={{
-                      display:
-                        'flex',
-                      alignItems:
-                        'center',
+                      display: 'flex',
+                      alignItems: 'center',
                       justifyContent:
                         'flex-end',
                       gap: 12,
@@ -1225,49 +1153,23 @@ function CommunityRoomPage() {
 
                     {match.awayLogo && (
                       <img
-                        src={
-                          match.awayLogo
-                        }
+                        src={match.awayLogo}
                         alt=""
                         style={{
-                          width:
-                            44,
-                          height:
-                            44,
-                          objectFit:
-                            'contain',
+                          width: 44,
+                          height: 44,
+                          objectFit: 'contain',
                         }}
                       />
                     )}
                   </div>
 
-                  {renderTeamEvents(
-                    awayEvents,
-                    'right',
-                  )}
+                  <TeamEvents
+                    events={awayEvents}
+                    align="right"
+                  />
                 </div>
               </div>
-
-              {unassignedEvents.length >
-                0 && (
-                <div
-                  style={{
-                    padding:
-                      '0 18px 18px',
-                    opacity:
-                      0.72,
-                    fontSize:
-                      12,
-                  }}
-                >
-                  {unassignedEvents
-                    .map(
-                      (event) =>
-                        `${event.minute ? `${event.minute} ` : ''}${event.text}`,
-                    )
-                    .join(' · ')}
-                </div>
-              )}
             </div>
           )}
 
