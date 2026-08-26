@@ -128,6 +128,9 @@ type EspnCompetition = {
   date?: string
   competitors?: EspnCompetitor[]
   status?: {
+    clock?: number
+    displayClock?: string
+    period?: number
     type?: EspnStatusType
   }
 }
@@ -436,14 +439,22 @@ function convertEvent(
       ),
 
     clockSeconds:
-      typeof status.clock === 'number'
-        ? status.clock
-        : null,
+      typeof competition.status?.clock ===
+      'number'
+        ? competition.status.clock
+        : typeof status.clock ===
+            'number'
+          ? status.clock
+          : null,
 
     period:
-      typeof status.period === 'number'
-        ? status.period
-        : null,
+      typeof competition.status?.period ===
+      'number'
+        ? competition.status.period
+        : typeof status.period ===
+            'number'
+          ? status.period
+          : null,
 
     state:
       status.state ?? '',
