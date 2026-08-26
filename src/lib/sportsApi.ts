@@ -1,6 +1,5 @@
 export type SportMatch = {
   id: string
-
   sport: 'football'
 
   leagueId: string
@@ -18,7 +17,7 @@ export type SportMatch = {
   status: string
   statusText: string
 
-  state: string
+  state: 'pre' | 'in' | 'post' | string
   completed: boolean
 
   time: string
@@ -53,6 +52,7 @@ type EspnCompetitor = {
 }
 
 type EspnStatusType = {
+  id?: string
   name?: string
   state?: string
   completed?: boolean
@@ -62,10 +62,9 @@ type EspnStatusType = {
 }
 
 type EspnCompetition = {
+  id?: string
   date?: string
-
   competitors?: EspnCompetitor[]
-
   status?: {
     type?: EspnStatusType
   }
@@ -73,15 +72,11 @@ type EspnCompetition = {
 
 type EspnEvent = {
   id?: string
-
   date?: string
-
   status?: {
     type?: EspnStatusType
   }
-
   competitions?: EspnCompetition[]
-
   links?: Array<{
     href?: string
   }>
@@ -89,17 +84,12 @@ type EspnEvent = {
 
 type EspnScoreboardResponse = {
   events?: EspnEvent[]
-
   leagues?: Array<{
     logos?: Array<{
       href?: string
     }>
   }>
 }
-
-/* =========================================================
-   CHATTODOO LEAGUES
-========================================================= */
 
 export const FOOTBALL_LEAGUES: FootballLeague[] = [
   {
@@ -110,7 +100,6 @@ export const FOOTBALL_LEAGUES: FootballLeague[] = [
     icon: '🏴',
     priority: 1,
   },
-
   {
     id: 'la-liga',
     code: 'esp.1',
@@ -119,7 +108,6 @@ export const FOOTBALL_LEAGUES: FootballLeague[] = [
     icon: '🇪🇸',
     priority: 2,
   },
-
   {
     id: 'champions-league',
     code: 'uefa.champions',
@@ -128,7 +116,6 @@ export const FOOTBALL_LEAGUES: FootballLeague[] = [
     icon: '⭐',
     priority: 3,
   },
-
   {
     id: 'serie-a',
     code: 'ita.1',
@@ -137,7 +124,6 @@ export const FOOTBALL_LEAGUES: FootballLeague[] = [
     icon: '🇮🇹',
     priority: 4,
   },
-
   {
     id: 'bundesliga',
     code: 'ger.1',
@@ -146,7 +132,6 @@ export const FOOTBALL_LEAGUES: FootballLeague[] = [
     icon: '🇩🇪',
     priority: 5,
   },
-
   {
     id: 'ligue-1',
     code: 'fra.1',
@@ -162,10 +147,6 @@ const ESPN_BASE =
 
 const DAY_MS =
   24 * 60 * 60 * 1000
-
-/* =========================================================
-   DATE HELPERS
-========================================================= */
 
 function formatEspnDate(
   date: Date,
@@ -212,20 +193,11 @@ function getCurrentWindow() {
 }
 
 function getSeasonWindow() {
-  /*
-   * Current European season:
-   * July 1 2026 → June 30 2027
-   */
-
   return {
     from: '20260701',
     to: '20270630',
   }
 }
-
-/* =========================================================
-   SCORE
-========================================================= */
 
 function convertScore(
   value:
@@ -248,17 +220,19 @@ function convertScore(
     : number
 }
 
-/* =========================================================
-   STATUS
-========================================================= */
-
+/*
+ * Prefer competition.status first.
+ *
+ * ESPN's competition object contains the
+ * live clock/state used by the scoreboard.
+ */
 function getStatusType(
   event: EspnEvent,
-) {
+): EspnStatusType {
   return (
-    event.status?.type ??
     event.competitions?.[0]
       ?.status?.type ??
+    event.status?.type ??
     {}
   )
 }
@@ -293,10 +267,6 @@ function getCompetitor(
   )
 }
 
-/* =========================================================
-   CONVERT
-========================================================= */
-
 function convertEvent(
   event: EspnEvent,
   league: FootballLeague,
@@ -328,6 +298,9 @@ function convertEvent(
     return null
   }
 
+  const status =
+    getStatusType(event)
+
   const homeName =
     home.team.displayName ??
     home.team.shortDisplayName ??
@@ -341,8 +314,8 @@ function convertEvent(
     'Away Team'
 
   const time =
-    event.date ??
     competition.date ??
+    event.date ??
     ''
 
   if (!time) {
@@ -352,6 +325,7 @@ function convertEvent(
   return {
     id:
       event.id ??
+      competition.id ??
       `${league.code}-${homeName}-${awayName}-${time}`,
 
     sport:
@@ -386,9 +360,7 @@ function convertEvent(
       ),
 
     status:
-      getStatusType(
-        event,
-      ).name ?? '',
+      status.name ?? '',
 
     statusText:
       getStatusText(
@@ -396,15 +368,11 @@ function convertEvent(
       ),
 
     state:
-      getStatusType(
-        event,
-      ).state ?? '',
+      status.state ?? '',
 
     completed:
       Boolean(
-        getStatusType(
-          event,
-        ).completed,
+        status.completed,
       ),
 
     time,
@@ -421,14 +389,24 @@ function convertEvent(
   }
 }
 
-/* =========================================================
-   ESPN FETCH HELPERS
-========================================================= */
-
-async function fetchEspnScoreboard(
+async function fetchScoreboard(
   league: FootballLeague,
-  url: string,
+  query = '',
 ): Promise<SportMatch[]> {
+  /*
+   * Cache-buster is intentional.
+   * We want fresh live score/status data.
+   */
+  const separator =
+    query
+      ? '&'
+      : '?'
+
+  const url =
+    `${ESPN_BASE}/${league.code}/scoreboard` +
+    query +
+    `${separator}_=${Date.now()}`
+
   const response =
     await fetch(
       url,
@@ -472,56 +450,35 @@ async function fetchEspnScoreboard(
 }
 
 /*
- * IMPORTANT:
+ * Most important request for live matches.
  *
- * This endpoint intentionally has NO dates parameter.
- * ESPN's current scoreboard is the freshest source for
- * matches that are live right now.
+ * NO date filter.
  */
-async function fetchLeagueCurrent(
+async function fetchLeagueLiveFeed(
   league: FootballLeague,
-): Promise<SportMatch[]> {
-  const url =
-    `${ESPN_BASE}/${league.code}/scoreboard` +
-    `?limit=1000`
-
-  return fetchEspnScoreboard(
+) {
+  return fetchScoreboard(
     league,
-    url,
+    '?limit=1000',
   )
 }
 
-/*
- * Used for recent results + upcoming fixtures.
- */
-async function fetchLeagueRange(
+async function fetchLeagueDateRange(
   league: FootballLeague,
   from: string,
   to: string,
-): Promise<SportMatch[]> {
-  const url =
-    `${ESPN_BASE}/${league.code}/scoreboard` +
-    `?limit=1000` +
-    `&dates=${from}-${to}`
-
-  return fetchEspnScoreboard(
+) {
+  return fetchScoreboard(
     league,
-    url,
+    `?limit=1000&dates=${from}-${to}`,
   )
 }
 
-/*
- * Merge by ESPN event id.
- *
- * Window matches are inserted first.
- * Current scoreboard matches are inserted second,
- * so LIVE/current score + status information wins.
- */
 function mergeMatches(
-  windowMatches: SportMatch[],
-  currentMatches: SportMatch[],
-): SportMatch[] {
-  const map =
+  dateMatches: SportMatch[],
+  liveMatches: SportMatch[],
+) {
+  const byId =
     new Map<
       string,
       SportMatch
@@ -529,134 +486,138 @@ function mergeMatches(
 
   for (
     const match of
-      windowMatches
+      dateMatches
   ) {
-    map.set(
+    byId.set(
       match.id,
       match,
     )
   }
 
+  /*
+   * Insert live feed last so its latest
+   * score/status overwrites stale schedule data.
+   */
   for (
-    const match of
-      currentMatches
+    const live of
+      liveMatches
   ) {
-    const existing =
-      map.get(
-        match.id,
+    const previous =
+      byId.get(
+        live.id,
       )
 
-    map.set(
-      match.id,
-      existing
+    byId.set(
+      live.id,
+      previous
         ? {
-            ...existing,
-            ...match,
-
-            /*
-             * Prefer a real score from either source.
-             */
+            ...previous,
+            ...live,
             homeScore:
-              match.homeScore ??
-              existing.homeScore,
-
+              live.homeScore ??
+              previous.homeScore,
             awayScore:
-              match.awayScore ??
-              existing.awayScore,
+              live.awayScore ??
+              previous.awayScore,
           }
-        : match,
+        : live,
     )
   }
 
   return Array.from(
-    map.values(),
+    byId.values(),
   )
 }
 
-/*
- * Fetch both sources for one league.
- *
- * This is the core live-score fix:
- *
- *   current scoreboard (no dates)
- *             +
- *   recent/upcoming date window
- *             ↓
- *          merged feed
- */
 async function fetchLeagueCurrentWindow(
   league: FootballLeague,
   from: string,
   to: string,
-): Promise<SportMatch[]> {
+) {
   const [
-    currentResult,
-    windowResult,
+    liveResult,
+    dateResult,
   ] =
     await Promise.allSettled([
-      fetchLeagueCurrent(
+      fetchLeagueLiveFeed(
         league,
       ),
 
-      fetchLeagueRange(
+      fetchLeagueDateRange(
         league,
         from,
         to,
       ),
     ])
 
-  const currentMatches =
-    currentResult.status ===
+  const liveMatches =
+    liveResult.status ===
     'fulfilled'
-      ? currentResult.value
+      ? liveResult.value
       : []
 
-  const windowMatches =
-    windowResult.status ===
+  const dateMatches =
+    dateResult.status ===
     'fulfilled'
-      ? windowResult.value
+      ? dateResult.value
       : []
 
   if (
-    currentResult.status ===
+    liveResult.status ===
     'rejected'
   ) {
     console.error(
-      `${league.name} current scoreboard failed:`,
-      currentResult.reason,
+      `${league.name} live scoreboard failed:`,
+      liveResult.reason,
     )
   }
 
   if (
-    windowResult.status ===
+    dateResult.status ===
     'rejected'
   ) {
     console.error(
-      `${league.name} date-window scoreboard failed:`,
-      windowResult.reason,
+      `${league.name} date scoreboard failed:`,
+      dateResult.reason,
     )
   }
 
-  if (
-    currentMatches.length ===
-      0 &&
-    windowMatches.length ===
-      0
-  ) {
-    throw new Error(
-      `${league.name} returned no scoreboard data.`,
+  const merged =
+    mergeMatches(
+      dateMatches,
+      liveMatches,
     )
-  }
 
-  return mergeMatches(
-    windowMatches,
-    currentMatches,
+  /*
+   * Useful while we validate production.
+   */
+  console.table(
+    merged.map(
+      (match) => ({
+        league:
+          match.competition,
+        home:
+          match.home,
+        away:
+          match.away,
+        score:
+          `${match.homeScore ?? '-'}-${match.awayScore ?? '-'}`,
+        state:
+          match.state,
+        status:
+          match.status,
+        statusText:
+          match.statusText,
+        live:
+          isLiveMatch(
+            match,
+          ),
+      }),
+    ),
   )
-}
 
-/* =========================================================
-   STATUS HELPERS
-========================================================= */
+  return merged
+}
 
 export function isLiveMatch(
   match: SportMatch,
@@ -666,9 +627,6 @@ export function isLiveMatch(
       .trim()
       .toLowerCase()
 
-  /*
-   * ESPN's canonical live state.
-   */
   if (
     state === 'in' ||
     state === 'live'
@@ -680,23 +638,38 @@ export function isLiveMatch(
     `${match.status} ${match.statusText}`
       .toLowerCase()
 
-  /*
-   * Fallbacks for unusual ESPN competition states.
-   */
   return (
+    status.includes(
+      'status_in_progress',
+    ) ||
+    status.includes(
+      'in progress',
+    ) ||
+    status.includes(
+      'in_progress',
+    ) ||
+    status.includes(
+      'in-progress',
+    ) ||
     status.includes('live') ||
-    status.includes('in progress') ||
-    status.includes('in_progress') ||
-    status.includes('in-progress') ||
-    status.includes('in play') ||
-    status.includes('in-play') ||
-    status.includes('status_in_progress') ||
-    status.includes('halftime') ||
-    status.includes('half time') ||
-    status.includes('1st half') ||
-    status.includes('2nd half') ||
-    status.includes('extra time') ||
-    status.includes('penalties')
+    status.includes(
+      'halftime',
+    ) ||
+    status.includes(
+      'half time',
+    ) ||
+    status.includes(
+      '1st half',
+    ) ||
+    status.includes(
+      '2nd half',
+    ) ||
+    status.includes(
+      'extra time',
+    ) ||
+    status.includes(
+      'penalties',
+    )
   )
 }
 
@@ -720,12 +693,21 @@ export function isFinishedMatch(
       .toLowerCase()
 
   return (
-    status.includes('final') ||
-    status.includes('finished') ||
-    status.includes('full time') ||
-    status.includes('fulltime') ||
-    status.includes('status_final') ||
-    status.includes('post')
+    status.includes(
+      'status_final',
+    ) ||
+    status.includes(
+      'final',
+    ) ||
+    status.includes(
+      'finished',
+    ) ||
+    status.includes(
+      'full time',
+    ) ||
+    status.includes(
+      'fulltime',
+    )
   )
 }
 
@@ -744,9 +726,6 @@ export function isUpcomingMatch(
       .trim()
       .toLowerCase()
 
-  /*
-   * ESPN's canonical pre-match state.
-   */
   if (
     state === 'pre'
   ) {
@@ -791,12 +770,6 @@ export function isRecentMatch(
   )
 }
 
-/* =========================================================
-   CURRENT WINDOW
-
-   Used by /sports.
-========================================================= */
-
 let cachedCurrent:
   SportMatch[] | null =
     null
@@ -807,11 +780,16 @@ let cachedCurrentAt =
 export async function getFootballMatches(): Promise<
   SportMatch[]
 > {
+  /*
+   * Only cache for 15 seconds.
+   * A 60-second cache is too slow
+   * for a live-match UI.
+   */
   if (
     cachedCurrent &&
     Date.now() -
       cachedCurrentAt <
-      30_000
+      15_000
   ) {
     return cachedCurrent
   }
@@ -856,10 +834,6 @@ export async function getFootballMatches(): Promise<
       },
     )
 
-  /*
-   * Extra safety:
-   * dedupe globally by ESPN event id.
-   */
   const unique =
     Array.from(
       new Map(
@@ -880,10 +854,6 @@ export async function getFootballMatches(): Promise<
 
   return unique
 }
-
-/* =========================================================
-   ONE LEAGUE - CURRENT WINDOW
-========================================================= */
 
 export async function getLeagueMatches(
   leagueId: string,
@@ -916,14 +886,6 @@ export async function getLeagueMatches(
   )
 }
 
-/* =========================================================
-   WHOLE CURRENT SEASON
-
-   Used on league hub.
-
-   Finished + live + upcoming.
-========================================================= */
-
 export async function getLeagueSeasonMatches(
   leagueId: string,
 ): Promise<
@@ -949,7 +911,7 @@ export async function getLeagueSeasonMatches(
     getSeasonWindow()
 
   const matches =
-    await fetchLeagueRange(
+    await fetchLeagueDateRange(
       league,
       from,
       to,
@@ -965,10 +927,6 @@ export async function getLeagueSeasonMatches(
       ).getTime(),
   )
 }
-
-/* =========================================================
-   GROUP MATCHES BY LEAGUE
-========================================================= */
 
 export async function getMatchesGroupedByLeague() {
   const matches =
@@ -987,10 +945,6 @@ export async function getMatchesGroupedByLeague() {
     }),
   )
 }
-
-/* =========================================================
-   SEARCH
-========================================================= */
 
 export async function searchTeamMatches(
   query: string,
@@ -1020,10 +974,6 @@ export async function searchTeamMatches(
   )
 }
 
-/* =========================================================
-   SINGLE MATCH
-========================================================= */
-
 export async function getMatch(
   sport: string,
   matchId: string,
@@ -1044,10 +994,6 @@ export async function getMatch(
       matchId,
     )
 
-  /*
-   * Search current window first.
-   */
-
   const current =
     await getFootballMatches()
 
@@ -1060,11 +1006,6 @@ export async function getMatch(
   if (currentMatch) {
     return currentMatch
   }
-
-  /*
-   * Fallback to each league's
-   * full season.
-   */
 
   for (
     const league of
@@ -1087,7 +1028,7 @@ export async function getMatch(
         return found
       }
     } catch {
-      // keep trying leagues
+      // Keep trying remaining leagues.
     }
   }
 
@@ -1095,10 +1036,6 @@ export async function getMatch(
     'Match not found.',
   )
 }
-
-/* =========================================================
-   BACKWARDS COMPATIBILITY
-========================================================= */
 
 export async function getMatches(
   sport = 'football',

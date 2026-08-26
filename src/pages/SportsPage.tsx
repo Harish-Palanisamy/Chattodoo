@@ -30,10 +30,6 @@ import {
   type SportMatch,
 } from '../lib/sportsApi'
 
-/* =========================================================
-   TIME
-========================================================= */
-
 function formatMatchTime(
   time: string,
 ) {
@@ -59,10 +55,6 @@ function formatMatchTime(
     },
   )
 }
-
-/* =========================================================
-   LOGO
-========================================================= */
 
 function TeamLogo({
   logo,
@@ -105,14 +97,6 @@ function TeamLogo({
     />
   )
 }
-
-/* =========================================================
-   SORT WITHIN LEAGUE
-
-   1. Live
-   2. Finished - newest first
-   3. Upcoming - nearest first
-========================================================= */
 
 function sortLeagueMatches(
   matches: SportMatch[],
@@ -177,10 +161,6 @@ function sortLeagueMatches(
   )
 }
 
-/* =========================================================
-   MATCH CARD
-========================================================= */
-
 function MatchCard({
   match,
 }: {
@@ -206,10 +186,9 @@ function MatchCard({
         live
           ? {
               border:
-                '1px solid rgba(168,85,247,.75)',
-
+                '1px solid rgba(168,85,247,.9)',
               boxShadow:
-                '0 0 28px rgba(168,85,247,.14)',
+                '0 0 30px rgba(168,85,247,.20)',
             }
           : undefined
       }
@@ -222,7 +201,6 @@ function MatchCard({
         {live ? (
           <span className="sports-live-badge">
             <span className="mini-live-dot" />
-
             LIVE
           </span>
         ) : upcoming ? (
@@ -245,16 +223,12 @@ function MatchCard({
           marginTop: 20,
         }}
       >
-        {/* HOME TEAM */}
-
         <div
           className="sports-team"
           style={{
             display: 'grid',
-
             gridTemplateColumns:
               '40px minmax(0,1fr) auto',
-
             alignItems: 'center',
             gap: 11,
           }}
@@ -280,16 +254,12 @@ function MatchCard({
           </span>
         </div>
 
-        {/* AWAY TEAM */}
-
         <div
           className="sports-team"
           style={{
             display: 'grid',
-
             gridTemplateColumns:
               '40px minmax(0,1fr) auto',
-
             alignItems: 'center',
             gap: 11,
           }}
@@ -323,7 +293,6 @@ function MatchCard({
               <Radio
                 size={14}
               />
-
               {match.statusText ||
                 'Live'}
             </>
@@ -332,7 +301,6 @@ function MatchCard({
               <Clock
                 size={14}
               />
-
               {formatMatchTime(
                 match.time,
               )}
@@ -342,7 +310,6 @@ function MatchCard({
 
         <span className="sports-room-link">
           Match rooms
-
           <ArrowRight
             size={15}
           />
@@ -351,10 +318,6 @@ function MatchCard({
     </Link>
   )
 }
-
-/* =========================================================
-   PAGE
-========================================================= */
 
 function SportsPage() {
   const [
@@ -403,10 +366,6 @@ function SportsPage() {
   ] =
     useState('')
 
-  /* =======================================================
-     LOAD MATCHES
-  ======================================================= */
-
   async function loadMatches(
     refresh = false,
   ) {
@@ -414,21 +373,15 @@ function SportsPage() {
       setError('')
 
       if (refresh) {
-        setRefreshing(
-          true,
-        )
+        setRefreshing(true)
       } else {
-        setLoading(
-          true,
-        )
+        setLoading(true)
       }
 
       const data =
         await getFootballMatches()
 
-      setMatches(
-        data,
-      )
+      setMatches(data)
     } catch (
       loadError
     ) {
@@ -451,13 +404,15 @@ function SportsPage() {
   useEffect(() => {
     loadMatches()
 
+    /*
+     * 20-second refresh so live scores/status
+     * update while a match is in progress.
+     */
     const interval =
       window.setInterval(
         () =>
-          loadMatches(
-            true,
-          ),
-        60_000,
+          loadMatches(true),
+        20_000,
       )
 
     return () =>
@@ -466,40 +421,27 @@ function SportsPage() {
       )
   }, [])
 
-  /* =======================================================
-     SEARCH
-  ======================================================= */
-
   async function handleSearch(
     value: string,
   ) {
-    setSearch(
-      value,
-    )
+    setSearch(value)
 
     if (
       !value.trim()
     ) {
-      setSearchResults(
-        null,
-      )
-
+      setSearchResults(null)
       return
     }
 
     try {
-      setSearching(
-        true,
-      )
+      setSearching(true)
 
       const data =
         await searchTeamMatches(
           value,
         )
 
-      setSearchResults(
-        data,
-      )
+      setSearchResults(data)
     } catch (
       searchError
     ) {
@@ -510,9 +452,7 @@ function SportsPage() {
 
       setSearchResults([])
     } finally {
-      setSearching(
-        false,
-      )
+      setSearching(false)
     }
   }
 
@@ -525,9 +465,24 @@ function SportsPage() {
     searchResults ??
     matches
 
-  /* =======================================================
-     GROUP BY LEAGUE
-  ======================================================= */
+  const liveMatches =
+    useMemo(
+      () =>
+        displayed
+          .filter(
+            isLiveMatch,
+          )
+          .sort(
+            (a, b) =>
+              new Date(
+                a.time,
+              ).getTime() -
+              new Date(
+                b.time,
+              ).getTime(),
+          ),
+      [displayed],
+    )
 
   const grouped =
     useMemo(
@@ -535,7 +490,6 @@ function SportsPage() {
         FOOTBALL_LEAGUES.map(
           (league) => ({
             league,
-
             matches:
               sortLeagueMatches(
                 displayed.filter(
@@ -549,16 +503,8 @@ function SportsPage() {
       [displayed],
     )
 
-  /* =======================================================
-     PAGE
-  ======================================================= */
-
   return (
     <div className="sports-page">
-      {/* ===================================================
-          NAVBAR
-      =================================================== */}
-
       <nav className="sports-navbar">
         <Link
           className="sports-brand"
@@ -585,8 +531,6 @@ function SportsPage() {
             Football
           </Link>
 
-          {/* NEW FEEDBACK LINK */}
-
           <Link to="/feedback">
             Feedback
           </Link>
@@ -609,13 +553,7 @@ function SportsPage() {
         </div>
       </nav>
 
-      {/* ===================================================
-          CONTENT
-      =================================================== */}
-
       <main className="sports-content">
-        {/* HERO */}
-
         <section className="sports-intro">
           <span className="sports-eyebrow">
             CHATTODOO FOOTBALL
@@ -624,20 +562,16 @@ function SportsPage() {
           <h1>
             Pick the league.
             <br />
-
             <span>
               Follow the action.
             </span>
           </h1>
 
           <p>
-            Matches are grouped by
-            competition, with live
-            games highlighted and
-            league rooms always open.
+            Live scores, fixtures,
+            results and football rooms
+            grouped by competition.
           </p>
-
-          {/* SEARCH */}
 
           <div className="sports-search">
             <Search
@@ -683,26 +617,17 @@ function SportsPage() {
           )}
         </section>
 
-        {/* =================================================
-            LOADING
-        ================================================= */}
-
         {loading ? (
           <div className="sports-state">
             <Loader2
               size={28}
               className="refresh-spin"
             />
-
             <p>
               Loading football...
             </p>
           </div>
         ) : error ? (
-          /* ===============================================
-             ERROR
-          =============================================== */
-
           <div className="sports-state error">
             <p>
               {error}
@@ -718,23 +643,16 @@ function SportsPage() {
               <RefreshCw
                 size={15}
               />
-
               Try again
             </button>
           </div>
         ) : (
           <>
-            {/* =============================================
-                REFRESH
-            ============================================= */}
-
             <div
               style={{
                 display: 'flex',
-
                 justifyContent:
                   'flex-end',
-
                 marginBottom: 26,
               }}
             >
@@ -742,9 +660,7 @@ function SportsPage() {
                 type="button"
                 className="sports-refresh"
                 onClick={() =>
-                  loadMatches(
-                    true,
-                  )
+                  loadMatches(true)
                 }
                 disabled={
                   refreshing
@@ -765,9 +681,36 @@ function SportsPage() {
               </button>
             </div>
 
-            {/* =============================================
-                LEAGUES
-            ============================================= */}
+            {liveMatches.length >
+              0 && (
+              <section className="sports-match-section">
+                <div className="sports-section-header">
+                  <div>
+                    <span className="sports-section-label">
+                      <span className="live-dot" />
+                      LIVE NOW
+                    </span>
+
+                    <h2>
+                      Happening now
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="sports-match-grid">
+                  {liveMatches.map(
+                    (match) => (
+                      <MatchCard
+                        key={`live-${match.id}`}
+                        match={
+                          match
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+              </section>
+            )}
 
             {grouped.map(
               ({
@@ -781,15 +724,12 @@ function SportsPage() {
                   }
                   className="sports-match-section"
                 >
-                  {/* LEAGUE HEADER */}
-
                   <div className="sports-section-header">
                     <div>
                       <span className="sports-section-label">
                         {
                           league.icon
                         }{' '}
-
                         {
                           league.country
                         }
@@ -809,16 +749,12 @@ function SportsPage() {
                       <MessageCircle
                         size={15}
                       />
-
                       Table & open chat
-
                       <ArrowRight
                         size={15}
                       />
                     </Link>
                   </div>
-
-                  {/* LEAGUE MATCHES */}
 
                   {leagueMatches.length >
                   0 ? (
@@ -826,9 +762,7 @@ function SportsPage() {
                       {leagueMatches.map(
                         (match) => (
                           <MatchCard
-                            key={
-                              `${league.id}-${match.id}`
-                            }
+                            key={`${league.id}-${match.id}`}
                             match={
                               match
                             }
@@ -837,10 +771,6 @@ function SportsPage() {
                       )}
                     </div>
                   ) : (
-                    /* =====================================
-                       EMPTY LEAGUE
-                    ===================================== */
-
                     <div className="sports-empty">
                       <Trophy
                         size={27}
@@ -855,7 +785,7 @@ function SportsPage() {
                         <p>
                           Open the league
                           page for the full
-                          2026/27 schedule.
+                          season schedule.
                         </p>
 
                         <Link
@@ -866,7 +796,6 @@ function SportsPage() {
                           {
                             league.name
                           }
-
                           <ArrowRight
                             size={14}
                           />
