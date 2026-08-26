@@ -17,6 +17,7 @@ import {
   Heart,
   MessageCircle,
   Send,
+  Share2,
   Users,
 } from 'lucide-react'
 
@@ -124,6 +125,12 @@ function CommunityRoomPage() {
     setSending,
   ] =
     useState(false)
+
+  const [
+    shareStatus,
+    setShareStatus,
+  ] =
+    useState('Share Room')
 
   /* =======================================================
      AUTH
@@ -418,6 +425,99 @@ function CommunityRoomPage() {
     }
   }
 
+  async function shareRoom() {
+    const url =
+      window.location.href
+
+    const title =
+      room?.name ??
+      'Chattodoo Room'
+
+    try {
+      if (
+        navigator.share
+      ) {
+        await navigator.share({
+          title,
+          text:
+            `Join me in ${title} on Chattodoo`,
+          url,
+        })
+
+        return
+      }
+
+      await navigator.clipboard.writeText(
+        url,
+      )
+
+      setShareStatus(
+        'Link copied!',
+      )
+
+      window.setTimeout(
+        () => {
+          setShareStatus(
+            'Share Room',
+          )
+        },
+        1800,
+      )
+    } catch (shareError) {
+      // Closing the native share sheet is not an app error.
+      if (
+        shareError instanceof DOMException &&
+        shareError.name === 'AbortError'
+      ) {
+        return
+      }
+
+      console.error(
+        shareError,
+      )
+
+      // Clipboard fallback for browsers where navigator.share exists
+      // but cannot complete the share operation.
+      try {
+        await navigator.clipboard.writeText(
+          url,
+        )
+
+        setShareStatus(
+          'Link copied!',
+        )
+
+        window.setTimeout(
+          () => {
+            setShareStatus(
+              'Share Room',
+            )
+          },
+          1800,
+        )
+      } catch (
+        clipboardError
+      ) {
+        console.error(
+          clipboardError,
+        )
+
+        setShareStatus(
+          'Could not share',
+        )
+
+        window.setTimeout(
+          () => {
+            setShareStatus(
+              'Share Room',
+            )
+          },
+          1800,
+        )
+      }
+    }
+  }
+
   async function handleReaction(
     reaction:
       | 'heart'
@@ -542,20 +642,49 @@ function CommunityRoomPage() {
               </small>
             </div>
 
-            <div className="live-viewers">
-              <Users
-                size={17}
-              />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                type="button"
+                onClick={
+                  shareRoom
+                }
+                className="send-button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                }}
+              >
+                <Share2
+                  size={16}
+                />
 
-              <strong>
-                {viewers}
-              </strong>
+                {shareStatus}
+              </button>
 
-              <small>
-                {isPublicRoom
-                  ? ' online'
-                  : ` / ${room.maxMembers}`}
-              </small>
+              <div className="live-viewers">
+                <Users
+                  size={17}
+                />
+
+                <strong>
+                  {viewers}
+                </strong>
+
+                <small>
+                  {isPublicRoom
+                    ? ' online'
+                    : ` / ${room.maxMembers}`}
+                </small>
+              </div>
             </div>
           </div>
 
