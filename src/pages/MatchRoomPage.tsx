@@ -117,6 +117,97 @@ function EventIcon({
   return <span>•</span>
 }
 
+function TeamEvents({
+  events,
+  align,
+}: {
+  events: MatchEvent[]
+  align: 'left' | 'right'
+}) {
+  if (events.length === 0) {
+    return null
+  }
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: 8,
+        marginTop: 12,
+        justifyItems:
+          align === 'right'
+            ? 'end'
+            : 'start',
+        width: '100%',
+      }}
+    >
+      {events.map(
+        (event) => (
+          <div
+            key={event.id}
+            style={{
+              display: 'grid',
+              gap: 3,
+              textAlign: align,
+              width: '100%',
+              maxWidth: 280,
+              padding: '7px 9px',
+              borderRadius: 10,
+              background:
+                'rgba(255,255,255,.035)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent:
+                  align === 'right'
+                    ? 'flex-end'
+                    : 'flex-start',
+                gap: 7,
+                fontSize: 13,
+                flexWrap: 'wrap',
+              }}
+            >
+              <EventIcon event={event} />
+
+              <strong>
+                {event.athlete ||
+                  event.text}
+              </strong>
+
+              {event.minute && (
+                <span
+                  style={{
+                    color: '#c084fc',
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {event.minute}
+                </span>
+              )}
+            </div>
+
+            {event.type ===
+              'goal' &&
+              event.assist && (
+                <small
+                  style={{
+                    opacity: 0.64,
+                  }}
+                >
+                  Assist: {event.assist}
+                </small>
+              )}
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
 function MatchRoomPage() {
   const {
     sport,
@@ -511,6 +602,26 @@ function MatchRoomPage() {
       match.id,
     )}/room/public`
 
+  const homeEvents =
+    matchEvents.filter(
+      (event) =>
+        Boolean(
+          match.homeTeamId &&
+          event.teamId ===
+            match.homeTeamId,
+        ),
+    )
+
+  const awayEvents =
+    matchEvents.filter(
+      (event) =>
+        Boolean(
+          match.awayTeamId &&
+          event.teamId ===
+            match.awayTeamId,
+        ),
+    )
+
   return (
     <div className="match-room-page">
       {/* NAV */}
@@ -544,28 +655,48 @@ function MatchRoomPage() {
       <main className="match-room-content">
         {/* MATCH */}
 
-        <section className="scoreboard">
+        <section
+          className="scoreboard"
+          style={{
+            alignItems: 'start',
+          }}
+        >
           <div className="score-team">
-            {match.homeLogo ? (
-              <img
-                src={
-                  match.homeLogo
-                }
-                alt={
-                  match.home
-                }
-              />
-            ) : (
-              <div className="team-logo-placeholder">
-                {match.home
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
-            )}
+            <div>
+              {match.homeLogo ? (
+                <img
+                  src={match.homeLogo}
+                  alt={match.home}
+                />
+              ) : (
+                <div className="team-logo-placeholder">
+                  {match.home
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              )}
 
-            <h2>
-              {match.home}
-            </h2>
+              <h2>
+                {match.home}
+              </h2>
+
+              {homeEvents.length >
+                0 && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    paddingTop: 10,
+                    borderTop:
+                      '1px solid rgba(255,255,255,.07)',
+                  }}
+                >
+                  <TeamEvents
+                    events={homeEvents}
+                    align="left"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="big-score">
@@ -597,168 +728,45 @@ function MatchRoomPage() {
           </div>
 
           <div className="score-team">
-            {match.awayLogo ? (
-              <img
-                src={
-                  match.awayLogo
-                }
-                alt={
-                  match.away
-                }
-              />
-            ) : (
-              <div className="team-logo-placeholder">
-                {match.away
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
-            )}
+            <div
+              style={{
+                textAlign: 'right',
+              }}
+            >
+              {match.awayLogo ? (
+                <img
+                  src={match.awayLogo}
+                  alt={match.away}
+                />
+              ) : (
+                <div className="team-logo-placeholder">
+                  {match.away
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              )}
 
-            <h2>
-              {match.away}
-            </h2>
-          </div>
-        </section>
+              <h2>
+                {match.away}
+              </h2>
 
-        {/* MATCH EVENTS */}
-
-        <section
-          className="room-panel"
-          style={{
-            marginTop: 24,
-          }}
-        >
-          <div className="panel-heading">
-            <span>
-              ⚡ MATCH EVENTS
-            </span>
-          </div>
-
-          <div
-            style={{
-              padding: 20,
-              display: 'grid',
-              gap: 10,
-            }}
-          >
-            {matchEvents.length ===
-            0 ? (
-              <p
-                style={{
-                  opacity: 0.65,
-                  margin: 0,
-                }}
-              >
-                No goal or card details
-                available from the match
-                feed yet.
-              </p>
-            ) : (
-              [...matchEvents]
-                .reverse()
-                .map(
-                  (event) => (
-                    <div
-                      key={
-                        event.id
-                      }
-                      style={{
-                        display:
-                          'grid',
-                        gridTemplateColumns:
-                          '36px minmax(0,1fr) auto',
-                        gap: 12,
-                        alignItems:
-                          'center',
-                        padding:
-                          '14px 16px',
-                        border:
-                          '1px solid rgba(255,255,255,.08)',
-                        borderRadius:
-                          14,
-                        background:
-                          'rgba(255,255,255,.025)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize:
-                            20,
-                        }}
-                      >
-                        <EventIcon
-                          event={
-                            event
-                          }
-                        />
-                      </div>
-
-                      <div
-                        style={{
-                          minWidth:
-                            0,
-                        }}
-                      >
-                        <strong>
-                          {event.athlete ||
-                            event.text}
-                        </strong>
-
-                        {event.type ===
-                          'goal' &&
-                          event.assist && (
-                            <div
-                              style={{
-                                opacity:
-                                  0.68,
-                                marginTop:
-                                  4,
-                                fontSize:
-                                  13,
-                              }}
-                            >
-                              Assist:{' '}
-                              {
-                                event.assist
-                              }
-                            </div>
-                          )}
-
-                        {event.type ===
-                          'goal' &&
-                          (event.penalty ||
-                            event.ownGoal) && (
-                            <div
-                              style={{
-                                opacity:
-                                  0.68,
-                                marginTop:
-                                  4,
-                                fontSize:
-                                  13,
-                              }}
-                            >
-                              {event.penalty
-                                ? 'Penalty'
-                                : 'Own goal'}
-                            </div>
-                          )}
-                      </div>
-
-                      <strong
-                        style={{
-                          color:
-                            '#a78bfa',
-                          whiteSpace:
-                            'nowrap',
-                        }}
-                      >
-                        {event.minute}
-                      </strong>
-                    </div>
-                  ),
-                )
-            )}
+              {awayEvents.length >
+                0 && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    paddingTop: 10,
+                    borderTop:
+                      '1px solid rgba(255,255,255,.07)',
+                  }}
+                >
+                  <TeamEvents
+                    events={awayEvents}
+                    align="right"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
