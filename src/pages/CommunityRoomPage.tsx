@@ -838,6 +838,7 @@ function CommunityRoomPage() {
             align === 'right'
               ? 'end'
               : 'start',
+          width: '100%',
         }}
       >
         {events.map(
@@ -848,7 +849,12 @@ function CommunityRoomPage() {
                 display: 'grid',
                 gap: 3,
                 textAlign: align,
-                maxWidth: 250,
+                width: '100%',
+                maxWidth: 280,
+                padding: '7px 9px',
+                borderRadius: 10,
+                background:
+                  'rgba(255,255,255,.035)',
               }}
             >
               <div
@@ -1093,16 +1099,28 @@ function CommunityRoomPage() {
                       style={{
                         overflowWrap:
                           'anywhere',
+                        fontSize: 16,
                       }}
                     >
                       {match.home}
                     </strong>
                   </div>
 
-                  <TeamEvents
-                    events={homeEvents}
-                    align="left"
-                  />
+                  {homeEvents.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        paddingTop: 10,
+                        borderTop:
+                          '1px solid rgba(255,255,255,.07)',
+                      }}
+                    >
+                      <TeamEvents
+                        events={homeEvents}
+                        align="left"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* SCORE */}
@@ -1146,6 +1164,7 @@ function CommunityRoomPage() {
                       style={{
                         overflowWrap:
                           'anywhere',
+                        fontSize: 16,
                       }}
                     >
                       {match.away}
@@ -1164,10 +1183,21 @@ function CommunityRoomPage() {
                     )}
                   </div>
 
-                  <TeamEvents
-                    events={awayEvents}
-                    align="right"
-                  />
+                  {awayEvents.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        paddingTop: 10,
+                        borderTop:
+                          '1px solid rgba(255,255,255,.07)',
+                      }}
+                    >
+                      <TeamEvents
+                        events={awayEvents}
+                        align="right"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
