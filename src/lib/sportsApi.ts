@@ -8,6 +8,9 @@ export type SportMatch = {
   home: string
   away: string
 
+  homeTeamId?: string
+  awayTeamId?: string
+
   homeLogo?: string
   awayLogo?: string
 
@@ -401,6 +404,12 @@ function convertEvent(
 
     away:
       awayName,
+
+    homeTeamId:
+      home.team.id,
+
+    awayTeamId:
+      away.team.id,
 
     homeLogo:
       home.team.logo,

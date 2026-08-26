@@ -793,6 +793,154 @@ function CommunityRoomPage() {
     return null
   }
 
+  const homeEvents =
+    match
+      ? matchEvents.filter(
+          (event) =>
+            Boolean(
+              match.homeTeamId &&
+              event.teamId ===
+                match.homeTeamId,
+            ),
+        )
+      : []
+
+  const awayEvents =
+    match
+      ? matchEvents.filter(
+          (event) =>
+            Boolean(
+              match.awayTeamId &&
+              event.teamId ===
+                match.awayTeamId,
+            ),
+        )
+      : []
+
+  const unassignedEvents =
+    match
+      ? matchEvents.filter(
+          (event) =>
+            !event.teamId ||
+            (event.teamId !==
+              match.homeTeamId &&
+              event.teamId !==
+                match.awayTeamId),
+        )
+      : []
+
+  function renderTeamEvents(
+    events: MatchEvent[],
+    align: 'left' | 'right',
+  ) {
+    if (events.length === 0) {
+      return null
+    }
+
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gap: 6,
+          marginTop: 10,
+          justifyItems:
+            align === 'right'
+              ? 'end'
+              : 'start',
+        }}
+      >
+        {events.map(
+          (event) => (
+            <div
+              key={event.id}
+              style={{
+                display: 'grid',
+                gap: 2,
+                maxWidth: 240,
+                textAlign:
+                  align,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems:
+                    'center',
+                  gap: 7,
+                  justifyContent:
+                    align === 'right'
+                      ? 'flex-end'
+                      : 'flex-start',
+                  fontSize: 13,
+                }}
+              >
+                <MatchEventIcon
+                  event={event}
+                />
+
+                <strong>
+                  {event.athlete ||
+                    event.text}
+                </strong>
+
+                {event.minute && (
+                  <span
+                    style={{
+                      color:
+                        '#c084fc',
+                      fontWeight:
+                        800,
+                      whiteSpace:
+                        'nowrap',
+                    }}
+                  >
+                    {event.minute}
+                  </span>
+                )}
+              </div>
+
+              {event.type ===
+                'goal' &&
+                event.assist && (
+                  <small
+                    style={{
+                      opacity: 0.62,
+                    }}
+                  >
+                    Assist: {event.assist}
+                  </small>
+                )}
+
+              {event.type ===
+                'goal' &&
+                event.penalty && (
+                  <small
+                    style={{
+                      opacity: 0.62,
+                    }}
+                  >
+                    Penalty
+                  </small>
+                )}
+
+              {event.type ===
+                'goal' &&
+                event.ownGoal && (
+                  <small
+                    style={{
+                      opacity: 0.62,
+                    }}
+                  >
+                    Own goal
+                  </small>
+                )}
+            </div>
+          ),
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="community-page">
       <nav className="sports-navbar">
@@ -968,47 +1116,57 @@ function CommunityRoomPage() {
                     'minmax(0,1fr) auto minmax(0,1fr)',
                   gap: 22,
                   alignItems:
-                    'center',
+                    'start',
                   padding:
                     '24px 18px',
                 }}
               >
                 <div
                   style={{
-                    display:
-                      'flex',
-                    alignItems:
-                      'center',
-                    gap: 12,
                     minWidth:
                       0,
                   }}
                 >
-                  {match.homeLogo && (
-                    <img
-                      src={
-                        match.homeLogo
-                      }
-                      alt=""
-                      style={{
-                        width:
-                          44,
-                        height:
-                          44,
-                        objectFit:
-                          'contain',
-                      }}
-                    />
-                  )}
-
-                  <strong
+                  <div
                     style={{
-                      overflowWrap:
-                        'anywhere',
+                      display:
+                        'flex',
+                      alignItems:
+                        'center',
+                      gap: 12,
                     }}
                   >
-                    {match.home}
-                  </strong>
+                    {match.homeLogo && (
+                      <img
+                        src={
+                          match.homeLogo
+                        }
+                        alt=""
+                        style={{
+                          width:
+                            44,
+                          height:
+                            44,
+                          objectFit:
+                            'contain',
+                        }}
+                      />
+                    )}
+
+                    <strong
+                      style={{
+                        overflowWrap:
+                          'anywhere',
+                      }}
+                    >
+                      {match.home}
+                    </strong>
+                  </div>
+
+                  {renderTeamEvents(
+                    homeEvents,
+                    'left',
+                  )}
                 </div>
 
                 <div
@@ -1019,6 +1177,8 @@ function CommunityRoomPage() {
                       900,
                     whiteSpace:
                       'nowrap',
+                    paddingTop:
+                      7,
                   }}
                 >
                   {match.homeScore ??
@@ -1037,163 +1197,75 @@ function CommunityRoomPage() {
 
                 <div
                   style={{
-                    display:
-                      'flex',
-                    alignItems:
-                      'center',
-                    justifyContent:
-                      'flex-end',
-                    gap: 12,
                     minWidth:
                       0,
                     textAlign:
                       'right',
                   }}
                 >
-                  <strong
+                  <div
                     style={{
-                      overflowWrap:
-                        'anywhere',
+                      display:
+                        'flex',
+                      alignItems:
+                        'center',
+                      justifyContent:
+                        'flex-end',
+                      gap: 12,
                     }}
                   >
-                    {match.away}
-                  </strong>
-
-                  {match.awayLogo && (
-                    <img
-                      src={
-                        match.awayLogo
-                      }
-                      alt=""
+                    <strong
                       style={{
-                        width:
-                          44,
-                        height:
-                          44,
-                        objectFit:
-                          'contain',
+                        overflowWrap:
+                          'anywhere',
                       }}
-                    />
+                    >
+                      {match.away}
+                    </strong>
+
+                    {match.awayLogo && (
+                      <img
+                        src={
+                          match.awayLogo
+                        }
+                        alt=""
+                        style={{
+                          width:
+                            44,
+                          height:
+                            44,
+                          objectFit:
+                            'contain',
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {renderTeamEvents(
+                    awayEvents,
+                    'right',
                   )}
                 </div>
               </div>
 
-              {matchEvents.length >
+              {unassignedEvents.length >
                 0 && (
                 <div
                   style={{
                     padding:
                       '0 18px 18px',
+                    opacity:
+                      0.72,
+                    fontSize:
+                      12,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize:
-                        12,
-                      fontWeight:
-                        800,
-                      letterSpacing:
-                        '.12em',
-                      opacity:
-                        0.65,
-                      marginBottom:
-                        10,
-                    }}
-                  >
-                    MATCH EVENTS
-                  </div>
-
-                  <div
-                    style={{
-                      display:
-                        'grid',
-                      gap: 8,
-                    }}
-                  >
-                    {[...matchEvents]
-                      .reverse()
-                      .slice(
-                        0,
-                        8,
-                      )
-                      .map(
-                        (
-                          event,
-                        ) => (
-                          <div
-                            key={
-                              event.id
-                            }
-                            style={{
-                              display:
-                                'grid',
-                              gridTemplateColumns:
-                                '28px minmax(0,1fr) auto',
-                              alignItems:
-                                'center',
-                              gap: 10,
-                              padding:
-                                '10px 12px',
-                              borderRadius:
-                                12,
-                              background:
-                                'rgba(255,255,255,.035)',
-                            }}
-                          >
-                            <MatchEventIcon
-                              event={
-                                event
-                              }
-                            />
-
-                            <div
-                              style={{
-                                minWidth:
-                                  0,
-                              }}
-                            >
-                              <strong>
-                                {event.athlete ||
-                                  event.text}
-                              </strong>
-
-                              {event.type ===
-                                'goal' &&
-                                event.assist && (
-                                  <div
-                                    style={{
-                                      marginTop:
-                                        3,
-                                      opacity:
-                                        0.65,
-                                      fontSize:
-                                        12,
-                                    }}
-                                  >
-                                    Assist:{' '}
-                                    {
-                                      event.assist
-                                    }
-                                  </div>
-                                )}
-                            </div>
-
-                            <strong
-                              style={{
-                                color:
-                                  '#c084fc',
-                                whiteSpace:
-                                  'nowrap',
-                              }}
-                            >
-                              {
-                                event.minute
-                              }
-                            </strong>
-                          </div>
-                        ),
-                      )}
-                  </div>
+                  {unassignedEvents
+                    .map(
+                      (event) =>
+                        `${event.minute ? `${event.minute} ` : ''}${event.text}`,
+                    )
+                    .join(' · ')}
                 </div>
               )}
             </div>
