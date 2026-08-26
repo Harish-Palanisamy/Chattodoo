@@ -25,11 +25,18 @@ import {
 } from '../lib/firebase'
 
 import {
+  addReaction,
   addCommunityReaction,
   getCommunityRoom,
+  joinRoom,
   joinCommunityRoom,
+  leaveRoom,
   leaveCommunityRoom,
+  sendRoomMessage,
   sendCommunityMessage,
+  subscribeToMessages,
+  subscribeToReactions,
+  subscribeToViewerCount,
   subscribeToCommunityMessages,
   subscribeToCommunityReactions,
   subscribeToCommunityViewerCount,
@@ -151,26 +158,24 @@ function CommunityRoomPage() {
 
     async function load() {
       try {
-        // "public" is the built-in official match room.
-        // It does not need a community-room document in Firebase.
         if (roomId === 'public') {
           if (!mounted) {
             return
           }
 
           setRoom({
-  id: 'public',
-  matchId: matchSlug ?? '',
-  sport: sport ?? 'football',
-  name: 'Official Match Room',
-  description:
-    'The open Chattodoo room for everyone following this match.',
-  ownerId: 'chattodoo',
-  ownerName: 'Chattodoo',
-  maxMembers: 500,
-  createdAt: Date.now(),
-  type: 'community',
-})
+            id: 'public',
+            matchId: matchSlug ?? '',
+            sport: sport ?? 'football',
+            name: 'Official Match Room',
+            description:
+              'The open Chattodoo room for everyone following this match.',
+            ownerId: 'chattodoo',
+            ownerName: 'Chattodoo',
+            maxMembers: 500,
+            createdAt: Date.now(),
+            type: 'community',
+          })
 
           return
         }
@@ -236,12 +241,74 @@ function CommunityRoomPage() {
      REALTIME ROOM
   ======================================================= */
 
+  const isPublicRoom =
+    roomId === 'public'
+
+  const officialRoomId =
+    matchSlug ?? ''
+
   useEffect(() => {
     if (
       !room ||
       !roomId
     ) {
       return
+    }
+
+    if (isPublicRoom) {
+      if (!officialRoomId) {
+        setError(
+          'Invalid official room URL.',
+        )
+
+        return
+      }
+
+      const unsubscribeMessages =
+        subscribeToMessages(
+          officialRoomId,
+          setMessages,
+        )
+
+      const unsubscribeReactions =
+        subscribeToReactions(
+          officialRoomId,
+          setReactions,
+        )
+
+      const unsubscribeViewers =
+        subscribeToViewerCount(
+          officialRoomId,
+          setViewers,
+        )
+
+      joinRoom(
+        officialRoomId,
+      ).catch(
+        (joinError) => {
+          console.error(
+            joinError,
+          )
+
+          setError(
+            joinError instanceof Error
+              ? joinError.message
+              : 'Could not join official room.',
+          )
+        },
+      )
+
+      return () => {
+        unsubscribeMessages()
+        unsubscribeReactions()
+        unsubscribeViewers()
+
+        leaveRoom(
+          officialRoomId,
+        ).catch(
+          console.error,
+        )
+      }
     }
 
     const unsubscribeMessages =
@@ -267,16 +334,13 @@ function CommunityRoomPage() {
       room.maxMembers,
       user?.uid,
     ).catch(
-      (
-        joinError,
-      ) => {
+      (joinError) => {
         console.error(
           joinError,
         )
 
         setError(
-          joinError instanceof
-            Error
+          joinError instanceof Error
             ? joinError.message
             : 'Could not join room.',
         )
@@ -298,6 +362,8 @@ function CommunityRoomPage() {
     room,
     roomId,
     user,
+    isPublicRoom,
+    officialRoomId,
   ])
 
   /* =======================================================
@@ -318,17 +384,31 @@ function CommunityRoomPage() {
         true,
       )
 
-      await sendCommunityMessage(
-        roomId,
+      if (isPublicRoom) {
+        await sendRoomMessage(
+          officialRoomId,
 
-        user?.displayName ??
-          user?.email ??
-          'Guest',
+          user?.displayName ??
+            user?.email ??
+            'Guest',
 
-        message,
+          message,
 
-        user?.uid,
-      )
+          user?.uid,
+        )
+      } else {
+        await sendCommunityMessage(
+          roomId,
+
+          user?.displayName ??
+            user?.email ??
+            'Guest',
+
+          message,
+
+          user?.uid,
+        )
+      }
 
       setMessage('')
     } finally {
@@ -336,6 +416,32 @@ function CommunityRoomPage() {
         false,
       )
     }
+  }
+
+  async function handleReaction(
+    reaction:
+      | 'heart'
+      | 'fire'
+      | 'laugh'
+      | 'wow',
+  ) {
+    if (!roomId) {
+      return
+    }
+
+    if (isPublicRoom) {
+      await addReaction(
+        officialRoomId,
+        reaction,
+      )
+
+      return
+    }
+
+    await addCommunityReaction(
+      roomId,
+      reaction,
+    )
   }
 
   /* =======================================================
@@ -412,7 +518,9 @@ function CommunityRoomPage() {
           <div className="live-room-header">
             <div>
               <span className="live-badge">
-                ● COMMUNITY ROOM
+                {isPublicRoom
+                  ? '● OFFICIAL MATCH ROOM'
+                  : '● COMMUNITY ROOM'}
               </span>
 
               <h1>
@@ -428,10 +536,9 @@ function CommunityRoomPage() {
               )}
 
               <small>
-                Created by{' '}
-                {
-                  room.ownerName
-                }
+                {isPublicRoom
+                  ? 'Open to everyone following this match'
+                  : `Created by ${room.ownerName}`}
               </small>
             </div>
 
@@ -445,10 +552,9 @@ function CommunityRoomPage() {
               </strong>
 
               <small>
-                /{' '}
-                {
-                  room.maxMembers
-                }
+                {isPublicRoom
+                  ? ' online'
+                  : ` / ${room.maxMembers}`}
               </small>
             </div>
           </div>
@@ -566,8 +672,7 @@ function CommunityRoomPage() {
                 type="button"
                 className="reaction-button"
                 onClick={() =>
-                  addCommunityReaction(
-                    room.id,
+                  handleReaction(
                     'heart',
                   )
                 }
@@ -601,8 +706,7 @@ function CommunityRoomPage() {
             <div className="room-reactions">
               <button
                 onClick={() =>
-                  addCommunityReaction(
-                    room.id,
+                  handleReaction(
                     'heart',
                   )
                 }
@@ -615,8 +719,7 @@ function CommunityRoomPage() {
 
               <button
                 onClick={() =>
-                  addCommunityReaction(
-                    room.id,
+                  handleReaction(
                     'fire',
                   )
                 }
@@ -629,8 +732,7 @@ function CommunityRoomPage() {
 
               <button
                 onClick={() =>
-                  addCommunityReaction(
-                    room.id,
+                  handleReaction(
                     'laugh',
                   )
                 }
@@ -643,8 +745,7 @@ function CommunityRoomPage() {
 
               <button
                 onClick={() =>
-                  addCommunityReaction(
-                    room.id,
+                  handleReaction(
                     'wow',
                   )
                 }
